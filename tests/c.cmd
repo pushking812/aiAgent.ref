@@ -1,0 +1,1 @@
+cmd D:\1py\aiAgent.ref\tests
