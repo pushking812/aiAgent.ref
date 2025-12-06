@@ -1,0 +1,8 @@
+# Базовый запуск
+python dependency_matrix.py /path/to/project
+
+# С настройками
+python dependency_matrix.py /path/to/project -o report.xlsx --exclude tests docs
+
+# С таймаутом
+python dependency_matrix.py /path/to/project --timeout 120

@@ -1,0 +1,2 @@
+# »спользование детализированной версии
+python detailed_tree.py /path/to/project

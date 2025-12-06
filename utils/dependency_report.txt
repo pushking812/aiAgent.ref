@@ -1,0 +1,11 @@
+# Базовый анализ проекта
+python dependency_report.py /path/to/project
+
+# С указанием имени выходного файла
+python dependency_report.py /path/to/project -o my_report.xlsx
+
+# С исключением директорий
+python dependency_report.py /path/to/project --exclude tests migrations docs
+
+# Простой анализ (только импорты)
+python dependency_report.py /path/to/project --simple

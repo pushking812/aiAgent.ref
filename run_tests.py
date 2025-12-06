@@ -48,6 +48,14 @@ def run_tests(args):
     
     return result.returncode
 
+def run_dialogs_coverage_tests():
+    """Запускает тесты для увеличения покрытия dialogs_view.py до 85%+."""
+    print("🎯 Запуск тестов для достижения 85%+ покрытия dialogs_view.py...")
+    
+    cmd = [sys.executable, "run_dialogs_high_coverage.py"]
+    result = subprocess.run(cmd)
+    
+    return result.returncode
 
 def show_coverage():
     """Показывает отчет о покрытии."""

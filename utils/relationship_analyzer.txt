@@ -1,0 +1,14 @@
+# Установка зависимостей
+pip install graphviz
+
+# Полный анализ с деревом и графиком
+python relationship_analyzer.py /path/to/project -t -g
+
+# Только текстовое дерево
+python relationship_analyzer.py . -t
+
+# Экспорт в JSON
+python relationship_analyzer.py . -j
+
+# Все опции вместе
+python relationship_analyzer.py . -t -g -j --format svg

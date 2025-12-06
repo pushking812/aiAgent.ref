@@ -456,3 +456,22 @@ class TestHelperMethods:
         # Проверяем создание ProjectCreationDialog
         project_dialog = ProjectCreationDialog(mock_parent, mock_pm)
         assert isinstance(project_dialog, ProjectCreationDialog)
+        
+# ==================== ТЕСТЫ СТРОКОВЫХ ПРЕДСТАВЛЕНИЙ ====================
+
+class TestStringRepresentations:
+    """Тесты строковых представлений."""
+    
+    def test_str_methods_dont_crash(self, mock_tk_parent, mock_project_manager):
+        """Тест что строковые представления не падают."""
+        # DialogsView
+        dialogs = DialogsView(mock_tk_parent)
+        str(dialogs)  # Не должен падать
+        
+        # ProjectCreationDialog
+        dialog = ProjectCreationDialog(mock_tk_parent, mock_project_manager)
+        str(dialog)  # Не должен падать
+        
+        # DirectoryOverwriteDialog
+        overwrite_dialog = DirectoryOverwriteDialog(mock_tk_parent, "/path", "Project")
+        str(overwrite_dialog)  # Не должен падать

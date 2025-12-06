@@ -1,0 +1,14 @@
+{
+  "patterns": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.coverage",
+    "**/coverage_html",
+    "**/htmlcov",
+    "**/.mypy_cache",
+    "**/.tox",
+    "**/*.egg-info",
+    "**/build",
+    "**/dist"
+  ]
+}

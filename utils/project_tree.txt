@@ -1,0 +1,20 @@
+# Базовое использование
+python project_tree.py /path/to/project
+
+# С глубиной 3 (папка.модуль.класс)
+python project_tree.py /path/to/project -d 3
+
+# С докстрингами
+python project_tree.py /path/to/project --docstrings
+
+# Экспорт в текстовый файл и JSON
+python project_tree.py /path/to/project -t -j
+
+# Поиск элемента
+python project_tree.py /path/to/project -s "User"
+
+# С исключением директорий
+python project_tree.py /path/to/project --exclude tests migrations
+
+# Использование детализированной версии
+python detailed_tree.py /path/to/project
