@@ -9,7 +9,13 @@ import argparse
 
 def run_tests(args):
     """Запускает тесты с указанными параметрами."""
-    cmd = [sys.executable, "-m", "pytest", "tests/"]
+    cmd = [sys.executable, "-m", "pytest"]
+    
+    # Если указаны конкретные файлы, добавляем их, иначе запускаем все тесты
+    if args.test_files:
+        cmd.extend(args.test_files)
+    else:
+        cmd.append("tests/")
     
     # Добавляем общие опции
     cmd.extend(["-v", "--tb=short", "--disable-warnings"])
@@ -21,9 +27,18 @@ def run_tests(args):
     if args.runslow:
         cmd.append("--runslow")
     
+    if args.run_gui:
+        cmd.append("--run-gui")
+    
+    if args.no_gui:
+        cmd.append("--no-gui")
+    
+    if args.headless:
+        cmd.append("--headless")
+    
     if args.coverage:
         cmd.extend([
-            "--cov=gui.views",
+            "--cov=.",  # Покрытие для всей директории
             "--cov-report=term",
             "--cov-report=html:coverage_html"
         ])
@@ -31,16 +46,8 @@ def run_tests(args):
         if args.min_coverage:
             cmd.extend([f"--cov-fail-under={args.min_coverage}"])
     
-    # Фильтр для пропуска проблемных тестов
-    if args.skip_problematic:
-        cmd.extend(["-k", "not test_modified_status_visual_feedback and not test_treeview_initialization and not test_matches_dot_notation_logic"])
-    
-    # Добавляем конкретные тесты если указаны
-    if args.test_files:
-        cmd.extend(args.test_files)
-    
     print(f"🚀 Запуск тестов...")
-    print(f"📋 Команда: {' '.join(cmd[:5])}...")
+    print(f"📋 Команда: {' '.join(cmd[:10])}{'...' if len(cmd) > 10 else ''}")
     print("=" * 60)
     
     result = subprocess.run(cmd)
@@ -95,18 +102,34 @@ def show_quick_coverage():
 def run_specific_module_tests(module_name):
     """Запускает тесты для конкретного модуля."""
     test_files = {
-        'dialogs': ['tests/test_dialogs_final.py', 'tests/test_dialogs_simple.py'],
-        'main_window': ['tests/test_main_window_view.py'],
-        'code_editor': ['tests/test_code_editor_view.py'],
-        'project_tree': ['tests/test_project_tree_view.py'],
-        'integration': ['tests/test_integration.py'],
-        'basic': ['tests/test_basic.py'],
+        'unit': [
+            'tests/unit/test_main_window_view.py',
+            'tests/unit/test_dialogs_view.py',
+            'tests/unit/test_code_editor_view.py',
+            'tests/unit/test_project_tree_view.py'
+        ],
+        'gui': [
+            'tests/gui/test_gui_components.py',
+            'tests/gui/test_real_tkinter.py'
+        ],
+        'integration': [
+            'tests/integration/test_gui_integration.py'
+        ],
+        'main_window': ['tests/unit/test_main_window_view.py'],
+        'code_editor': ['tests/unit/test_code_editor_view.py'],
+        'project_tree': ['tests/unit/test_project_tree_view.py'],
+        'dialogs': ['tests/unit/test_dialogs_view.py'],
         'all_gui': [
-            'tests/test_main_window_view.py',
-            'tests/test_code_editor_view.py',
-            'tests/test_project_tree_view.py',
-            'tests/test_dialogs_final.py',
-            'tests/test_integration.py'
+            'tests/unit/test_main_window_view.py',
+            'tests/unit/test_code_editor_view.py',
+            'tests/unit/test_project_tree_view.py',
+            'tests/unit/test_dialogs_view.py',
+            'tests/gui/test_gui_components.py'
+        ],
+        'all': [
+            'tests/unit/',
+            'tests/gui/',
+            'tests/integration/'
         ]
     }
     
@@ -132,13 +155,31 @@ def main():
     
     parser.add_argument(
         "-m", "--marker",
-        help="Запустить тесты с указанным маркером (gui, unit, integration)"
+        help="Запустить тесты с указанным маркером (gui, unit, integration, tkinter, slow)"
     )
     
     parser.add_argument(
         "--runslow",
         action="store_true",
         help="Запускать медленные тесты"
+    )
+    
+    parser.add_argument(
+        "--run-gui",
+        action="store_true",
+        help="Запускать GUI тесты (требует tkinter)"
+    )
+    
+    parser.add_argument(
+        "--no-gui",
+        action="store_true",
+        help="Пропускать GUI тесты"
+    )
+    
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Запускать GUI тесты в headless режиме (требует Xvfb)"
     )
     
     parser.add_argument(
@@ -156,8 +197,8 @@ def main():
     
     parser.add_argument(
         "--module",
-        choices=['dialogs', 'main_window', 'code_editor', 'project_tree', 
-                'integration', 'basic', 'all_gui'],
+        choices=['unit', 'gui', 'integration', 'main_window', 'code_editor', 
+                'project_tree', 'dialogs', 'all_gui', 'all'],
         help="Запустить тесты для конкретного модуля"
     )
     
@@ -165,12 +206,6 @@ def main():
         "--check-coverage",
         action="store_true",
         help="Проверить текущее покрытие без запуска тестов"
-    )
-    
-    parser.add_argument(
-        "--skip-problematic",
-        action="store_true",
-        help="Пропустить проблемные тесты с Tkinter сравнениями"
     )
     
     parser.add_argument(
@@ -186,13 +221,17 @@ def main():
         parser.print_help()
         print("\n📋 Примеры использования:")
         print("  python run_tests.py --coverage              # Все тесты с покрытием")
-        print("  python run_tests.py -m gui --coverage       # GUI тесты с покрытием")
-        print("  python run_tests.py --module dialogs        # Только тесты dialogs")
+        print("  python run_tests.py -m gui --run-gui        # GUI тесты с реальным tkinter")
+        print("  python run_tests.py -m unit                 # Только unit тесты")
+        print("  python run_tests.py --module dialogs        # Только тесты диалогов")
         print("  python run_tests.py --module all_gui        # Все GUI тесты")
+        print("  python run_tests.py --module all            # Все тесты")
         print("  python run_tests.py --check-coverage        # Проверить текущее покрытие")
-        print("  python run_tests.py --skip-problematic      # Пропустить проблемные тесты")
-        print("  python run_tests.py --min-coverage 80       # С минимальным покрытием 80%%")
-        print("  python run_tests.py tests/test_basic.py     # Конкретный файл")
+        print("  python run_tests.py --runslow              # Включая медленные тесты")
+        print("  python run_tests.py --no-gui               # Без GUI тестов")
+        print("  python run_tests.py --min-coverage 80      # С минимальным покрытием 80%%")
+        print("  python run_tests.py tests/unit/            # Тесты из директории")
+        print("  python run_tests.py tests/test_basic.py    # Конкретный файл")
         return 0
     
     # Проверка покрытия без запуска тестов

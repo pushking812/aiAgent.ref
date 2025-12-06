@@ -1,12 +1,12 @@
 # gui/views/__init__.py
 
-from .main_window_view import MainWindowView, IMainWindowView
 from .code_editor_view import CodeEditorView, ICodeEditorView
 from .dialogs_view import DialogsView, IDialogsView
+from .main_window_view import IMainWindowView, MainWindowView
 
-# ProjectTreeView может быть временно отключен если есть проблемы с импортом
+# ProjectTreeView РјРѕР¶РµС‚ Р±С‹С‚СЊ РІСЂРµРјРµРЅРЅРѕ РѕС‚РєР»СЋС‡РµРЅ РµСЃР»Рё РµСЃС‚СЊ РїСЂРѕР±Р»РµРјС‹ СЃ РёРјРїРѕСЂС‚РѕРј
 try:
-    from .project_tree_view import ProjectTreeView, IProjectTreeView
+    from .project_tree_view import IProjectTreeView, ProjectTreeView
     __all__ = [
         'MainWindowView',
         'IMainWindowView',

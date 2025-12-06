@@ -1,37 +1,44 @@
 # tests/base_gui_test.py
 
+"""Базовый класс для всех GUI тестов."""
+
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 
 class BaseGUITest:
-    """������� ����� ��� ���� GUI ������."""
-    
+    """Базовый класс для всех GUI тестов."""
+
     @pytest.fixture(autouse=True)
     def setup_logging(self, monkeypatch):
-        """����������� ����������� ��� ������."""
+        """Настраивает логирование для тестов."""
         mock_logger = Mock()
-        monkeypatch.setattr('gui.views.code_editor_view.logger', mock_logger)
-        monkeypatch.setattr('gui.views.dialogs_view.logger', mock_logger)
-        monkeypatch.setattr('gui.views.project_tree_view.logger', mock_logger)
+        # Патчим логгеры во всех модулях views
+        modules_to_patch = [
+            'gui.views.code_editor_view.logger',
+            'gui.views.dialogs_view.logger',
+            'gui.views.project_tree_view.logger',
+            'gui.views.main_window_view.logger'
+        ]
+
+        for module_path in modules_to_patch:
+            monkeypatch.setattr(module_path, mock_logger)
+
         return mock_logger
-    
-    def create_mock_widget(self, widget_type="frame"):
-        """������� mock ������."""
-        mock_widget = MagicMock()
-        mock_widget.pack = Mock()
-        mock_widget.config = Mock()
-        mock_widget.cget = Mock(return_value="normal")
-        mock_widget.winfo_exists = Mock(return_value=True)
-        mock_widget.winfo_children = Mock(return_value=[])
-        
-        if widget_type == "text":
-            mock_widget.get = Mock(return_value="test content\n")
-            mock_widget.delete = Mock()
-            mock_widget.insert = Mock()
-            mock_widget.see = Mock()
-            mock_widget.update = Mock()
-            mock_widget.bind = Mock()
-            mock_widget.unbind = Mock()
-        
-        return mock_widget
+
+    @pytest.fixture
+    def mock_tk_parent(self):
+        """Создает mock родительского окна."""
+        parent = Mock()
+        parent.winfo_x = Mock(return_value=100)
+        parent.winfo_y = Mock(return_value=100)
+        parent.winfo_width = Mock(return_value=800)
+        parent.winfo_height = Mock(return_value=600)
+        parent.winfo_exists = Mock(return_value=True)
+        return parent
+
+    @pytest.fixture
+    def mock_project_manager(self):
+        """Создает mock менеджера проектов."""
+        return Mock()

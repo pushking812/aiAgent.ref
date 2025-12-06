@@ -197,7 +197,7 @@ class ProjectCreationDialog:
             # Проверяем, существует ли директория
             if os.path.exists(full_project_path) and os.listdir(full_project_path):
                 # Директория не пуста - показываем диалог перезаписи
-                from .dialogs_view import DirectoryOverwriteDialog
+                # from .dialogs_view import DirectoryOverwriteDialog
                 overwrite_dialog = DirectoryOverwriteDialog(dialog, full_project_path, name)
                 if not overwrite_dialog.show():
                     return

@@ -1,0 +1,95 @@
+# pytest.ini - ОБНОВЛЕННАЯ ВЕРСИЯ для новой структуры тестов
+
+[pytest]
+# Пути для поиска тестов (учитываем новую структуру)
+testpaths =
+    tests
+    tests/unit
+    tests/gui
+    tests/integration
+
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+
+# Опции по умолчанию
+addopts =
+    --strict-markers
+    --strict-config
+    -ra                      # показать summary результатов тестов
+    --tb=short               # короткий traceback
+    --disable-warnings       # отключить предупреждения в выводе
+    --ignore=tests/__pycache__
+    --ignore=*/__pycache__
+
+# Настройки для разных сред
+minversion = 6.0
+xfail_strict = true
+
+# Фильтры для предупреждений (более конкретные)
+filterwarnings =
+    # Игнорируем стандартные предупреждения Python
+    ignore::DeprecationWarning
+    ignore::PendingDeprecationWarning
+    ignore::UserWarning:.*tkinter.*
+    ignore::ResourceWarning
+    # Игнорируем предупреждения от unittest.mock
+    ignore::pytest.PytestUnhandledThreadExceptionWarning
+
+# Маркеры (обновленные с описанием новой структуры)
+markers =
+    gui: тесты GUI компонентов (используют mock tkinter или реальный с --run-gui)
+    unit: unit-тесты (без зависимостей, в tests/unit/)
+    integration: интеграционные тесты (в tests/integration/)
+    slow: медленные тесты (пропускаются по умолчанию)
+    requires_gui: тесты, требующие реального GUI окружения (пропускаются без --run-gui)
+    requires_tkinter: тесты, требующие установленного tkinter
+    tkinter: тесты с реальным tkinter (в tests/gui/)
+    performance: тесты производительности
+    network: тесты, требующие сетевого подключения
+    coverage: тесты для проверки покрытия кода
+
+# Настройки таймаутов
+timeout = 30
+timeout_method = thread
+
+# Настройки для CI/JUnit отчетов
+junit_family = xunit2
+junit_suite_name = GUI Application Tests
+junit_logging = all
+junit_duration_report = call
+
+# Настройки кэширования
+cache_dir = .pytest_cache
+
+# Настройки для тестов с GUI (опциональные параметры)
+[tool:pytest.ini_options]
+# Настройки для GUI тестов
+gui_test_timeout = 60
+headless_mode = auto
+
+# Настройки покрытия (если используется pytest-cov)
+[tool:pytest.coverage]
+coverage_report_formats = html,term
+coverage_fail_under = 70
+coverage_source = gui
+
+# Логирование тестов
+log_cli = false
+log_cli_level = INFO
+log_cli_format = %(asctime)s [%(levelname)s] %(message)s
+log_cli_date_format = %Y-%m-%d %H:%M:%S
+
+# Конфигурация для плагинов
+[pytest-watcher]
+runner = pytest
+args = -xvs
+paths =
+    tests/
+    gui/
+patterns =
+    *.py
+ignore_patterns =
+    __pycache__/*
+    .pytest_cache/*
+    .coverage

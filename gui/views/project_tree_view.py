@@ -1,11 +1,11 @@
-# gui/views/project_tree_view.py - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
+# gui/views/project_tree_view.py
 
-import tkinter as tk
-from tkinter import ttk
+import logging
 import os
 import re
-from typing import Dict, List, Optional, Any, Callable
-import logging
+import tkinter as tk
+from tkinter import ttk
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger('ai_code_assistant')
 
@@ -25,33 +25,33 @@ class IProjectTreeView:
 
 class ProjectTreeView(ttk.Frame, IProjectTreeView):
     """Реализация дерева проекта."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.pack(fill=tk.BOTH, expand=True)
-        
+
         # Создаем фрейм для дерева
         tree_frame = ttk.LabelFrame(self, text="Структура проекта")
         tree_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         tree_container = ttk.Frame(tree_frame)
         tree_container.pack(fill=tk.BOTH, expand=True)
-        
+
         # Создаем Treeview
         self.tree = ttk.Treeview(tree_container, show='tree')
         tree_scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=tree_scrollbar.set)
-        
+
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         # Инициализация
         self.search_results: List[str] = []
         self.current_search_index = -1
         self._item_map: Dict[str, Dict] = {}  # Сопоставление ID → данных
         self._on_tree_select_callback: Optional[Callable] = None
         self.all_tree_items: List[str] = []
-        
+
         logger.debug("ProjectTreeView инициализирован")
 
     def setup_tree(self):
@@ -63,22 +63,22 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self.tree.delete(*self.tree.get_children())
         self._item_map.clear()
         self.all_tree_items = []
-        
+
         # Получаем данные
         modules = project_structure.get("modules", [])
         files = project_structure.get("files", {})
-        
+
         # Добавляем модули
         for module in modules:
             module_id = self.tree.insert("", "end", text=module, tags=('module',))
             self._item_map[module_id] = {
-                "type": "module", 
-                "name": module, 
+                "type": "module",
+                "name": module,
                 "path": module,
                 "full_path": module
             }
             self.all_tree_items.append(module_id)
-        
+
         # Добавляем файлы
         for file_path in files:
             # Находим родителя (модуль)
@@ -86,18 +86,18 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             for module in modules:
                 if file_path.startswith(module):
                     parent_id = self._find_tree_item_by_name(module)
-            
+
             # Создаем элемент файла
             file_name = os.path.basename(file_path)
             file_id = self.tree.insert(parent_id, "end", text=file_name, tags=('file',))
             self._item_map[file_id] = {
-                "type": "file", 
-                "name": file_name, 
+                "type": "file",
+                "name": file_name,
                 "path": file_path,
                 "full_path": file_path
             }
             self.all_tree_items.append(file_id)
-        
+
         logger.debug("Дерево заполнено: modules=%s, files=%s", len(modules), len(files))
 
     def _find_tree_item_by_name(self, name: str) -> str:
@@ -121,13 +121,13 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         # Сбрасываем подсветку
         for item_id in self.all_tree_items:
             self.tree.item(item_id, tags=())
-        
+
         # Подсвечиваем найденные элементы
         for item_id in items:
             self.tree.item(item_id, tags=('found',))
-        
+
         self.tree.tag_configure('found', background='#e6f3ff')
-        
+
         # Прокручиваем к первому результату
         if items:
             self._expand_to_item(items[0])
@@ -138,7 +138,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         while parent_id:
             self.tree.item(parent_id, open=True)
             parent_id = self.tree.parent(parent_id)
-        
+
         self.tree.selection_set(item_id)
         self.tree.focus(item_id)
         self.tree.see(item_id)
@@ -173,7 +173,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         """Ищет элементы в дереве."""
         search_lower = search_text.lower()
         results = []
-        
+
         # Поиск по точечной нотации
         if '.' in search_lower:
             parts = search_lower.split('.')
@@ -187,19 +187,19 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                 item_text = self.tree.item(item_id, 'text').lower()
                 if search_lower in item_text:
                     results.append(item_id)
-        
+
         return results
 
     def _get_item_full_path(self, item_id: str) -> str:
         """Возвращает полный путь элемента."""
         path_parts = []
         current_id = item_id
-        
+
         while current_id:
             item_text = self.tree.item(current_id, 'text')
             path_parts.append(item_text)
             current_id = self.tree.parent(current_id)
-        
+
         path_parts.reverse()
         return '.'.join(path_parts)
 
@@ -207,10 +207,10 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         """Проверяет соответствие точечной нотации."""
         clean_path = self._clean_search_path(full_path)
         path_parts = clean_path.split('.')
-        
+
         if len(search_parts) > len(path_parts):
             return False
-        
+
         # Ищем последовательное соответствие
         for i in range(len(path_parts) - len(search_parts) + 1):
             match = True
@@ -220,7 +220,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                     break
             if match:
                 return True
-        
+
         return False
 
     def _clean_search_path(self, path: str) -> str:

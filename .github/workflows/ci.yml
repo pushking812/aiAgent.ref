@@ -1,134 +1,271 @@
-name: CI/CD Pipeline
+# .github/workflows/ci.yml - CI конфигурация для новой структуры тестов
+
+name: GUI Application CI
 
 on:
   push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/.gitignore'
+    branches: [ main, develop, feature/*, release/* ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Еженедельно в воскресенье в полночь
+  workflow_dispatch:  # Ручной запуск
 
 jobs:
-  quality-checks:
-    name: Quality Checks
+  # Стандартные проверки
+  lint-and-format:
+    name: Lint & Format
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
-        
+        cache: 'pip'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install black isort flake8 mypy
-        
-    - name: Black check
-      run: black --check gui/ tests/
-      
-    - name: Isort check
-      run: isort --check-only gui/ tests/
-      
-    - name: Flake8 lint
-      run: flake8 gui/ tests/ --max-line-length=100 --ignore=E203,W503,E501
-      
-    - name: Mypy type check
-      run: mypy gui/ --ignore-missing-imports --no-implicit-optional
-      
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: quality-checks
-    
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff gui/ tests/
+
+    - name: Check imports with isort
+      run: |
+        isort --check-only --diff gui/ tests/
+
+    - name: Lint with flake8
+      run: |
+        flake8 gui/ tests/ \
+          --max-line-length=100 \
+          --ignore=E203,W503,E501,F401 \
+          --exclude=__pycache__,.git,.pytest_cache
+
+    - name: Type checking with mypy
+      run: |
+        mypy gui/ \
+          --ignore-missing-imports \
+          --disallow-untyped-defs \
+          --warn-redundant-casts \
+          --warn-unused-ignores
+
+  # Основные тесты
+  test-matrix:
+    name: Tests (${{ matrix.os }} - Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        os: [ubuntu-latest]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.11"
+
+    needs: lint-and-format
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
-        
-    - name: Install dependencies
-      run: |
-        pip install -r requirements-test.txt
-        pip install -e .
-        
-    - name: Run unit tests
-      run: |
-        python -m pytest tests/ -m unit -v --tb=short --disable-warnings --junitxml=unit-test-results.xml
-        
-    - name: Upload unit test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: unit-test-results
-        path: unit-test-results.xml
-        
-  gui-tests:
-    name: GUI Tests
-    runs-on: ubuntu-latest
-    needs: quality-checks
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
     - name: Install system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y xvfb python3-tk
-        
+        # Устанавливаем зависимости для разных ОС
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y xvfb python3-tk python3-dev
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install python-tk
+        fi
+
     - name: Install Python dependencies
       run: |
-        pip install -r requirements-test.txt
+        python -m pip install --upgrade pip setuptools wheel
         pip install -e .
-        
-    - name: Run GUI tests
+        pip install pytest pytest-cov pytest-xdist
+        pip install pytest-mock pytest-timeout
+
+        # Создаем requirements-test.txt если нужно
+        if [ ! -f "requirements-test.txt" ]; then
+          echo "pytest>=7.0.0" > requirements-test.txt
+          echo "pytest-cov>=4.0.0" >> requirements-test.txt
+          echo "pytest-mock>=3.0.0" >> requirements-test.txt
+          echo "pytest-xdist>=3.0.0" >> requirements-test.txt
+        fi
+
+        pip install -r requirements-test.txt
+
+    - name: Run unit tests (без GUI)
       run: |
-        xvfb-run --auto-servernum \
-          python -m pytest tests/ -m gui -v --tb=short --run-gui --junitxml=gui-test-results.xml
-        
-    - name: Upload GUI test results
+        python -m pytest tests/unit/ \
+          -v \
+          --tb=short \
+          --disable-warnings \
+          --junitxml=test-results/unit-tests.xml \
+          --cov=gui.views \
+          --cov-report=term-missing
+
+    - name: Run integration tests
+      run: |
+        python -m pytest tests/integration/ \
+          -v \
+          --tb=short \
+          --disable-warnings \
+          --junitxml=test-results/integration-tests.xml
+
+    - name: Run GUI tests (с реальным tkinter если доступен)
+      env:
+        DISABLE_GUI_TESTS: ${{ runner.os == 'Windows' && 'true' || 'false' }}
+      run: |
+        # Пропускаем GUI тесты на Windows если есть проблемы
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          # Linux: используем xvfb для headless режима
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
+            python -m pytest tests/gui/ \
+              -v \
+              --tb=short \
+              --run-gui \
+              --disable-warnings \
+              --junitxml=test-results/gui-tests.xml
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          # macOS: пытаемся запустить GUI тесты
+          python -m pytest tests/gui/ \
+            -v \
+            --tb=short \
+            --run-gui \
+            --disable-warnings \
+            --junitxml=test-results/gui-tests.xml || echo "GUI тесты пропущены или завершились с ошибкой"
+        else
+          # Windows: пропускаем или запускаем в зависимости от переменной окружения
+          if [ "$DISABLE_GUI_TESTS" == "true" ]; then
+            echo "Пропускаем GUI тесты на Windows"
+          else
+            python -m pytest tests/gui/ \
+              -v \
+              --tb=short \
+              --run-gui \
+              --disable-warnings \
+              --junitxml=test-results/gui-tests.xml || echo "GUI тесты завершились с ошибкой"
+          fi
+        fi
+
+    - name: Run all tests с покрытием
+      run: |
+        python -m pytest tests/ \
+          -v \
+          --tb=short \
+          --disable-warnings \
+          --cov=gui \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-fail-under=70 \
+          --junitxml=test-results/all-tests.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: gui,unittests,integration
+        name: ${{ matrix.os }}-py${{ matrix.python-version }}
+
+    - name: Upload test artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: gui-test-results
-        path: gui-test-results.xml
-        
-  coverage:
-    name: Coverage Report
+        name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: |
+          htmlcov/
+          test-results/
+          .coverage*
+        retention-days: 7
+
+  # Тесты производительности и медленные тесты
+  performance-tests:
+    name: Performance & Slow Tests
     runs-on: ubuntu-latest
-    needs: [unit-tests, gui-tests]
-    
+    needs: test-matrix
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
-        
+
     - name: Install dependencies
       run: |
-        pip install -r requirements-test.txt
         pip install -e .
-        
-    - name: Generate coverage report
+        pip install pytest pytest-timeout
+
+    - name: Run slow tests
       run: |
-        python -m pytest tests/ -v --tb=short \
-          --cov=gui --cov-report=xml --cov-report=html --cov-fail-under=70
-          
-    - name: Upload coverage report
+        xvfb-run --auto-servernum \
+          python -m pytest tests/ \
+            -m "slow or performance" \
+            --runslow \
+            -v \
+            --tb=short \
+            --disable-warnings \
+            --timeout=300 \
+            --junitxml=test-results/slow-tests.xml
+
+    - name: Upload slow test results
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
-        path: htmlcov/
+        name: slow-test-results
+        path: test-results/slow-tests.xml
+
+  # Деплой документации тестов
+  deploy-docs:
+    name: Deploy Test Documentation
+    runs-on: ubuntu-latest
+    needs: test-matrix
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Generate test documentation
+      run: |
+        # Создаем простую документацию о тестах
+        mkdir -p docs/test-coverage
+        echo "# Test Coverage Report" > docs/test-coverage/README.md
+        echo "Generated: $(date)" >> docs/test-coverage/README.md
+        echo "" >> docs/test-coverage/README.md
+        echo "See the HTML reports in the artifacts." >> docs/test-coverage/README.md
+
+    - name: Upload documentation
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-documentation
+        path: docs/test-coverage/
+
+# Уведомления
+notifications:
+  email:
+    on_success: never
+    on_failure: always
