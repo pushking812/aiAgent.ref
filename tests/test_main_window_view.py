@@ -146,3 +146,74 @@ class TestMainWindowViewUnit:
         for method_name in methods:
             assert hasattr(view, method_name)
             assert callable(getattr(view, method_name))
+            
+# В существующий файл tests/test_main_window_view.py добавляем:
+
+@pytest.mark.gui
+class TestMainWindowViewAdditional:
+    """Дополнительные тесты MainWindowView для повышения покрытия."""
+    
+    def test_all_bind_methods(self, main_window_view, mock_callback):
+        """Тест всех методов привязки."""
+        # Проверяем bind_create_project
+        main_window_view.bind_create_project(mock_callback)
+        assert main_window_view.create_project_button['command'] is not None
+        
+        # Проверяем bind_open_project
+        main_window_view.bind_open_project(mock_callback)
+        assert main_window_view.open_project_button['command'] is not None
+        
+        # Проверяем bind_create_structure
+        main_window_view.bind_create_structure(mock_callback)
+        assert main_window_view.create_structure_button['command'] is not None
+    
+    def test_content_panel_accessibility(self, main_window_view):
+        """Тест доступности контентной панели."""
+        assert main_window_view.content_panel is not None
+        assert hasattr(main_window_view.content_panel, 'winfo_children')
+        
+        # Можно добавлять виджеты в content_panel
+        test_label = tk.Label(main_window_view.content_panel, text="Test")
+        test_label.pack()
+        
+        children = main_window_view.content_panel.winfo_children()
+        assert len(children) > 0
+    
+    def test_top_panel_structure(self, main_window_view):
+        """Тест структуры верхней панели."""
+        # Проверяем что кнопки есть в top_panel
+        top_panel_children = main_window_view.top_panel.winfo_children()
+        assert len(top_panel_children) >= 3  # 3 основные кнопки
+        
+        # Проверяем порядок упаковки
+        for child in top_panel_children:
+            pack_info = child.pack_info()
+            assert 'side' in pack_info
+            assert pack_info['side'] == tk.LEFT
+    
+    @patch('tkinter.messagebox.showinfo')
+    def test_show_info_edge_cases(self, mock_showinfo, main_window_view):
+        """Тест граничных случаев для show_info."""
+        # Пустые строки
+        main_window_view.show_info("", "")
+        mock_showinfo.assert_called_with("", "")
+        
+        # Длинные строки
+        long_title = "A" * 100
+        long_message = "B" * 1000
+        main_window_view.show_info(long_title, long_message)
+        mock_showinfo.assert_called_with(long_title, long_message)
+    
+    def test_status_label_updates(self, main_window_view):
+        """Тест обновлений статусной метки."""
+        test_cases = [
+            "",
+            " ",
+            "Тестовый статус",
+            "Status with\nnewline",
+            "A" * 100,  # Длинная строка
+        ]
+        
+        for status_text in test_cases:
+            main_window_view.set_status(status_text)
+            assert main_window_view.status_label.cget('text') == status_text

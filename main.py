@@ -15,7 +15,7 @@ from core.business.analysis_service import AnalysisService
 from core.data.project_repository import ProjectRepository
 from core.data.ai_schema_parser import AISchemaParser
 
-# Настройка логирования
+# РќР°СЃС‚СЂРѕР№РєР° Р»РѕРіРёСЂРѕРІР°РЅРёСЏ
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -24,20 +24,20 @@ logger = logging.getLogger('ai_code_assistant')
 
 
 def setup_dependencies():
-    """Настраивает зависимости приложения (Dependency Injection)."""
-    # Репозитории и парсеры
+    """РќР°СЃС‚СЂР°РёРІР°РµС‚ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РїСЂРёР»РѕР¶РµРЅРёСЏ (Dependency Injection)."""
+    # Р РµРїРѕР·РёС‚РѕСЂРёРё Рё РїР°СЂСЃРµСЂС‹
     repository = ProjectRepository()
     schema_parser = AISchemaParser()
     
-    # Сервисы
+    # РЎРµСЂРІРёСЃС‹
     project_service = ProjectService(repository, schema_parser)
     code_service = CodeService(repository)
     
-    # Анализатор кода (заглушка - нужно реализовать)
+    # РђРЅР°Р»РёР·Р°С‚РѕСЂ РєРѕРґР° (Р·Р°РіР»СѓС€РєР° - РЅСѓР¶РЅРѕ СЂРµР°Р»РёР·РѕРІР°С‚СЊ)
     from core.business.analysis_service import IAnalysisService
     class SimpleAnalyzer:
         def run_analysis(self, project_path): return True
-        def get_latest_report(self, project_path): return "Отчет анализа"
+        def get_latest_report(self, project_path): return "РћС‚С‡РµС‚ Р°РЅР°Р»РёР·Р°"
         def run_auto_refactor(self, project_path): return True
     
     analyzer = SimpleAnalyzer()
@@ -47,24 +47,24 @@ def setup_dependencies():
 
 
 def create_main_window(root):
-    """Создает главное окно приложения со всеми компонентами."""
-    # Создаем View компоненты
+    """РЎРѕР·РґР°РµС‚ РіР»Р°РІРЅРѕРµ РѕРєРЅРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ СЃРѕ РІСЃРµРјРё РєРѕРјРїРѕРЅРµРЅС‚Р°РјРё."""
+    # РЎРѕР·РґР°РµРј View РєРѕРјРїРѕРЅРµРЅС‚С‹
     main_view = MainWindowView(root)
     code_editor_view = CodeEditorView(main_view.content_panel)
     project_tree_view = ProjectTreeView(main_view.content_panel)
     dialogs_view = DialogsView(root)
     
-    # Настраиваем layout
+    # РќР°СЃС‚СЂР°РёРІР°РµРј layout
     main_view.pack(fill=tk.BOTH, expand=True)
     
-    # Размещаем дерево проекта и редактор
+    # Р Р°Р·РјРµС‰Р°РµРј РґРµСЂРµРІРѕ РїСЂРѕРµРєС‚Р° Рё СЂРµРґР°РєС‚РѕСЂ
     project_tree_view.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
     code_editor_view.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
     
-    # Настраиваем зависимости
+    # РќР°СЃС‚СЂР°РёРІР°РµРј Р·Р°РІРёСЃРёРјРѕСЃС‚Рё
     repository, project_service, code_service, analysis_service = setup_dependencies()
     
-    # Создаем контроллер
+    # РЎРѕР·РґР°РµРј РєРѕРЅС‚СЂРѕР»Р»РµСЂ
     controller = MainController(
         main_window_view=main_view,
         code_editor_view=code_editor_view,
@@ -79,8 +79,8 @@ def create_main_window(root):
 
 
 def run_app():
-    """Запускает приложение."""
-    logger.info("Запуск AI Code Assistant")
+    """Р—Р°РїСѓСЃРєР°РµС‚ РїСЂРёР»РѕР¶РµРЅРёРµ."""
+    logger.info("Р—Р°РїСѓСЃРє AI Code Assistant")
     
     root = tk.Tk()
     root.title("AI Code Assistant")
@@ -88,13 +88,13 @@ def run_app():
     
     try:
         controller = create_main_window(root)
-        logger.info("Приложение успешно инициализировано")
+        logger.info("РџСЂРёР»РѕР¶РµРЅРёРµ СѓСЃРїРµС€РЅРѕ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅРѕ")
     except Exception as e:
-        logger.error("Ошибка инициализации приложения: %s", e)
+        logger.error("РћС€РёР±РєР° РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РїСЂРёР»РѕР¶РµРЅРёСЏ: %s", e)
         raise
     
     root.mainloop()
-    logger.info("Приложение закрыто")
+    logger.info("РџСЂРёР»РѕР¶РµРЅРёРµ Р·Р°РєСЂС‹С‚Рѕ")
 
 
 if __name__ == "__main__":
