@@ -1,123 +1,79 @@
-D:\1py\aiAgent.ref>python run_all_tests.py
-?? Запуск всех тестов...
-?? Количество тестовых файлов: 9
-============================================================
-================================================================================== test session starts ===================================================================================
-platform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\python.exe
-cachedir: .pytest_cache
-rootdir: D:\1py\aiAgent.ref
-configfile: pytest.ini
-plugins: cov-7.0.0, mock-3.15.1, timeout-2.4.0
-collected 61 items
-
-
-tests/test_dialogs_view.py::TestProjectCreationDialog::test_validation_empty_path FAILED                                                                                            [ 47%]
-tests/test_dialogs_view.py::TestProjectCreationDialog::test_validation_empty_name FAILED                                                                                            [ 49%]
-tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_project_creation_dialog_show_method FAILED                                                                   [ 52%]
-tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_project_creation_with_existing_directory FAILED                                                              [ 54%]
-tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_dialogs_view_init FAILED                                                                                     [ 55%]
-tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_show_diff_detailed FAILED                                                                                    [ 57%]
-tests/test_project_tree_view_additional.py::TestProjectTreeViewAdditional::test_clean_search_path FAILED                                                                            [ 75%]
-tests/test_project_tree_view_additional.py::TestProjectTreeViewAdditional::test_matches_dot_notation FAILED                                                                         [ 77%]
-
-
-======================================================================================== FAILURES ========================================================================================
-__________________________________________________________________ TestProjectCreationDialog.test_validation_empty_path __________________________________________________________________
-tests\test_dialogs_view.py:156: in test_validation_empty_path
-    dialog._on_ok()
-    ^^^^^^^^^^^^^
-E   AttributeError: 'ProjectCreationDialog' object has no attribute '_on_ok'
-__________________________________________________________________ TestProjectCreationDialog.test_validation_empty_name __________________________________________________________________
-tests\test_dialogs_view.py:175: in test_validation_empty_name
-    dialog._on_ok()
-    ^^^^^^^^^^^^^
-E   AttributeError: 'ProjectCreationDialog' object has no attribute '_on_ok'
-___________________________________________________________ TestDialogsViewAdditional.test_project_creation_dialog_show_method ___________________________________________________________
-tests\test_dialogs_view_additional.py:41: in test_project_creation_dialog_show_method
-    result = dialog.show()
-             ^^^^^^^^^^^^^
-gui\views\dialogs_view.py:119: in show
-    x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (dialog.winfo_width() // 2)
-                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: unsupported operand type(s) for //: 'Mock' and 'int'
-________________________________________________________ TestDialogsViewAdditional.test_project_creation_with_existing_directory _________________________________________________________
-tests\test_dialogs_view_additional.py:91: in test_project_creation_with_existing_directory
-    result = dialog.show()
-             ^^^^^^^^^^^^^
-gui\views\dialogs_view.py:125: in show
-    main_frame = ttk.Frame(dialog, padding="20")
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\Lib\tkinter\ttk.py:720: in __init__
-    Widget.__init__(self, master, "ttk::frame", kw)
-C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\Lib\tkinter\ttk.py:534: in __init__
-    tkinter.Widget.__init__(self, master, widgetname, kw=kw)
-C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\Lib\tkinter\__init__.py:2774: in __init__
-    self._setup(master, cnf)
-C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\Lib\tkinter\__init__.py:2752: in _setup
-    count = master._last_child_ids.get(name, 0) + 1
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: unsupported operand type(s) for +: 'Mock' and 'int'
-____________________________________________________________________ TestDialogsViewAdditional.test_dialogs_view_init ____________________________________________________________________
-tests\test_dialogs_view_additional.py:100: in test_dialogs_view_init
-    dialogs = DialogsView(mock_parent)
-              ^^^^^^^^^^^
-E   NameError: name 'DialogsView' is not defined
-___________________________________________________________________ TestDialogsViewAdditional.test_show_diff_detailed ____________________________________________________________________
-tests\test_dialogs_view_additional.py:111: in test_show_diff_detailed
-    dialogs = DialogsView(mock_parent)
-              ^^^^^^^^^^^
-E   NameError: name 'DialogsView' is not defined
-__________________________________________________________________ TestProjectTreeViewAdditional.test_clean_search_path __________________________________________________________________
-tests\test_project_tree_view_additional.py:36: in test_clean_search_path
-    assert result == expected
-E   AssertionError: assert 'appmain' == 'app.main'
+====================================================== FAILURES =======================================================
+________________________ TestProjectTreeViewAdditional.test_clean_search_path_edge_cases_fixed ________________________
+tests\test_project_tree_view.py:235: in test_clean_search_path_edge_cases_fixed
+    assert result == cleaned_expected, f"Для '{input_path}' ожидалось '{cleaned_expected}', получено '{result}'"
+E   AssertionError: Для 'app..main' ожидалось 'app.main', получено 'app..main'
+E   assert 'app..main' == 'app.main'
 E
 E     - app.main
-E     ?    -
-E     + appmain
-________________________________________________________________ TestProjectTreeViewAdditional.test_matches_dot_notation _________________________________________________________________
-tests\test_project_tree_view_additional.py:51: in test_matches_dot_notation
-    assert result == expected
-E   assert False == True
-===================================================================================== tests coverage =====================================================================================
-____________________________________________________________________ coverage: platform win32, python 3.13.9-final-0 _____________________________________________________________________
+E     + app..main
+E     ?    +
+______________________________ TestTkinterComparisons.test_tkinter_show_value_comparison ______________________________
+tests\test_tkinter_fixes.py:46: in test_tkinter_show_value_comparison
+    assert show_value == ('tree', 'headings') or show_value == ('tree',)
+E   AssertionError: assert ((<index object: 'tree'>, <index object: 'headings'>) == ('tree', 'headings')
+E
+E     At index 0 diff: <index object: 'tree'> != 'tree'
+E
+E     Full diff:
+E       (
+E     -     'tree',
+E     -     'headings',
+E     +     <index object: 'tree'>,
+E     +     <index object: 'headings'>,
+E       ) or (<index object: 'tree'>, <index object: 'headings'>) == ('tree',)
+E
+E     At index 0 diff: <index object: 'tree'> != 'tree'
+E     Left contains one more item: <index object: 'headings'>
+E
+E     Full diff:
+E       (
+E     -     'tree',
+E     +     <index object: 'tree'>,
+E     +     <index object: 'headings'>,
+E       ))
+=================================================== tests coverage ====================================================
+___________________________________ coverage: platform win32, python 3.13.9-final-0 ___________________________________
 
 Name                             Stmts   Miss  Cover
 ----------------------------------------------------
 gui\views\__init__.py                9      3    67%
-gui\views\code_editor_view.py      140     30    79%
-gui\views\dialogs_view.py          134     66    51%
-gui\views\main_window_view.py       41      2    95%
-gui\views\project_tree_view.py     149     14    91%
+gui\views\code_editor_view.py      140     25    82%
+gui\views\dialogs_view.py          134     64    52%
+gui\views\main_window_view.py       41      0   100%
+gui\views\project_tree_view.py     149      5    97%
 ----------------------------------------------------
-TOTAL                              473    115    76%
+TOTAL                              473     97    79%
 Coverage HTML written to dir coverage_html
-Required test coverage of 75% reached. Total coverage: 75.69%
-================================================================================ short test summary info =================================================================================
-FAILED tests/test_dialogs_view.py::TestProjectCreationDialog::test_validation_empty_path - AttributeError: 'ProjectCreationDialog' object has no attribute '_on_ok'
-FAILED tests/test_dialogs_view.py::TestProjectCreationDialog::test_validation_empty_name - AttributeError: 'ProjectCreationDialog' object has no attribute '_on_ok'
-FAILED tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_project_creation_dialog_show_method - TypeError: unsupported operand type(s) for //: 'Mock' and 'int'
-FAILED tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_project_creation_with_existing_directory - TypeError: unsupported operand type(s) for +: 'Mock' and 'int'
-FAILED tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_dialogs_view_init - NameError: name 'DialogsView' is not defined
-FAILED tests/test_dialogs_view_additional.py::TestDialogsViewAdditional::test_show_diff_detailed - NameError: name 'DialogsView' is not defined
-FAILED tests/test_project_tree_view_additional.py::TestProjectTreeViewAdditional::test_clean_search_path - AssertionError: assert 'appmain' == 'app.main'
+Required test coverage of 75% reached. Total coverage: 79.49%
+=============================================== short test summary info ===============================================
+FAILED tests/test_project_tree_view.py::TestProjectTreeViewAdditional::test_clean_search_path_edge_cases_fixed - AssertionError: Для 'app..main' ожидалось 'app.main', получено 'app..main'
+assert 'app..main' == 'app.main'
 
   - app.main
-  ?    -
-  + appmain
-FAILED tests/test_project_tree_view_additional.py::TestProjectTreeViewAdditional::test_matches_dot_notation - assert False == True
-============================================================================== 8 failed, 53 passed in 3.03s ==============================================================================
+  + app..main
+  ?    +
+FAILED tests/test_tkinter_fixes.py::TestTkinterComparisons::test_tkinter_show_value_comparison - AssertionError: assert ((<index object: 'tree'>, <index object: 'headings'>) == ('tree', 'headings')
+
+  At index 0 diff: <index object: 'tree'> != 'tree'
+
+  Full diff:
+    (
+  -     'tree',
+  -     'headings',
+  +     <index object: 'tree'>,
+  +     <index object: 'headings'>,
+    ) or (<index object: 'tree'>, <index object: 'headings'>) == ('tree',)
+
+  At index 0 diff: <index object: 'tree'> != 'tree'
+  Left contains one more item: <index object: 'headings'>
+
+  Full diff:
+    (
+  -     'tree',
+  +     <index object: 'tree'>,
+  +     <index object: 'headings'>,
+    ))
+====================================== 2 failed, 140 passed, 2 skipped in 4.59s =======================================
 ============================================================
 ? Тесты завершились с ошибкой (код: 1)
-
-?? Анализ покрытия кода:
-------------------------------------------------------------
-Name                             Stmts   Miss  Cover
-----------------------------------------------------
-gui\views\dialogs_view.py          134     66    51%
-gui\views\__init__.py                9      3    67%
-gui\views\code_editor_view.py      140     30    79%
-gui\views\project_tree_view.py     149     14    91%
-gui\views\main_window_view.py       41      2    95%
-----------------------------------------------------
-TOTAL                              473    115    76%
