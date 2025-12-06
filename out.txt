@@ -1,37 +1,28 @@
-====================================================== FAILURES =======================================================
-________________________ TestProjectTreeViewAdditional.test_clean_search_path_edge_cases_fixed ________________________
-tests\test_project_tree_view.py:235: in test_clean_search_path_edge_cases_fixed
-    assert result == cleaned_expected, f"Для '{input_path}' ожидалось '{cleaned_expected}', получено '{result}'"
-E   AssertionError: Для 'app..main' ожидалось 'app.main', получено 'app..main'
-E   assert 'app..main' == 'app.main'
-E
-E     - app.main
-E     + app..main
-E     ?    +
-______________________________ TestTkinterComparisons.test_tkinter_show_value_comparison ______________________________
-tests\test_tkinter_fixes.py:46: in test_tkinter_show_value_comparison
-    assert show_value == ('tree', 'headings') or show_value == ('tree',)
-E   AssertionError: assert ((<index object: 'tree'>, <index object: 'headings'>) == ('tree', 'headings')
-E
-E     At index 0 diff: <index object: 'tree'> != 'tree'
-E
-E     Full diff:
-E       (
-E     -     'tree',
-E     -     'headings',
-E     +     <index object: 'tree'>,
-E     +     <index object: 'headings'>,
-E       ) or (<index object: 'tree'>, <index object: 'headings'>) == ('tree',)
-E
-E     At index 0 diff: <index object: 'tree'> != 'tree'
-E     Left contains one more item: <index object: 'headings'>
-E
-E     Full diff:
-E       (
-E     -     'tree',
-E     +     <index object: 'tree'>,
-E     +     <index object: 'headings'>,
-E       ))
+D:\1py\aiAgent.ref>python run_tests.py --coverage
+?? Запуск тестов...
+?? Команда: C:\Users\pustoshkin\AppData\Local\Programs\Python\Python313\python.exe -m pytest tests/ -v...
+============================================================
+================================================= test session starts =================================================
+platform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0
+rootdir: D:\1py\aiAgent.ref
+configfile: pytest.ini
+plugins: cov-7.0.0, mock-3.15.1, timeout-2.4.0
+collected 144 items
+
+tests\test_basic.py ...s..                                                                                       [  4%]
+tests\test_code_editor_view.py ..................                                                                [ 16%]
+tests\test_dialogs_final.py ...............................                                                      [ 38%]
+tests\test_dialogs_missing_coverage.py ....                                                                      [ 40%]
+tests\test_dialogs_simple.py ..........                                                                          [ 47%]
+tests\test_dialogs_view.py .........................ss.                                                          [ 67%]
+tests\test_integration.py ..s                                                                                    [ 69%]
+tests\test_main_window_view.py ............                                                                      [ 77%]
+tests\test_project_tree_view.py ................                                                                 [ 88%]
+tests\test_project_tree_view_additional.py .......                                                               [ 93%]
+tests\test_real_tkinter.py ...                                                                                   [ 95%]
+tests\test_simple_gui.py ....                                                                                    [ 98%]
+tests\test_tkinter_fixes.py ..                                                                                   [100%]
+
 =================================================== tests coverage ====================================================
 ___________________________________ coverage: platform win32, python 3.13.9-final-0 ___________________________________
 
@@ -47,33 +38,21 @@ TOTAL                              473     97    79%
 Coverage HTML written to dir coverage_html
 Required test coverage of 75% reached. Total coverage: 79.49%
 =============================================== short test summary info ===============================================
-FAILED tests/test_project_tree_view.py::TestProjectTreeViewAdditional::test_clean_search_path_edge_cases_fixed - AssertionError: Для 'app..main' ожидалось 'app.main', получено 'app..main'
-assert 'app..main' == 'app.main'
-
-  - app.main
-  + app..main
-  ?    +
-FAILED tests/test_tkinter_fixes.py::TestTkinterComparisons::test_tkinter_show_value_comparison - AssertionError: assert ((<index object: 'tree'>, <index object: 'headings'>) == ('tree', 'headings')
-
-  At index 0 diff: <index object: 'tree'> != 'tree'
-
-  Full diff:
-    (
-  -     'tree',
-  -     'headings',
-  +     <index object: 'tree'>,
-  +     <index object: 'headings'>,
-    ) or (<index object: 'tree'>, <index object: 'headings'>) == ('tree',)
-
-  At index 0 diff: <index object: 'tree'> != 'tree'
-  Left contains one more item: <index object: 'headings'>
-
-  Full diff:
-    (
-  -     'tree',
-  +     <index object: 'tree'>,
-  +     <index object: 'headings'>,
-    ))
-====================================== 2 failed, 140 passed, 2 skipped in 4.59s =======================================
+SKIPPED [1] tests\test_basic.py:26: требуется --runslow чтобы запустить
+SKIPPED [2] tests\test_dialogs_view.py: GUI тесты отключены, используйте --run-gui для запуска
+SKIPPED [1] tests\test_integration.py: требуется --runslow чтобы запустить
+=========================================== 140 passed, 4 skipped in 4.30s ============================================
 ============================================================
-? Тесты завершились с ошибкой (код: 1)
+? Все тесты пройдены успешно!
+
+?? Отчет о покрытии кода:
+============================================================
+Name                             Stmts   Miss  Cover   Missing
+--------------------------------------------------------------
+gui\views\__init__.py                9      3    67%   20-22
+gui\views\code_editor_view.py      140     25    82%   106-108, 117-120, 124-125, 133, 139-162, 237
+gui\views\dialogs_view.py          134     64    52%   110-225
+gui\views\main_window_view.py       41      0   100%
+gui\views\project_tree_view.py     149      5    97%   108, 117, 139-140, 240
+--------------------------------------------------------------
+TOTAL                              473     97    79%
