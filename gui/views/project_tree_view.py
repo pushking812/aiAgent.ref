@@ -227,6 +227,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         """Очищает путь для поиска."""
         cleaned = re.sub(r'[🔹📦📝⚡🏛️📋❓()]', '', path)
         cleaned = re.sub(r'\s+', '', cleaned)
+        cleaned = re.sub(r'\.{2,}', '.', cleaned)  # замена 2+ точек на одну
         cleaned = cleaned.strip('.')
         return cleaned.lower()
 
