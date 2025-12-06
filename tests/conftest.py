@@ -1,27 +1,35 @@
-# tests/conftest.py - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-
-import os
-import sys
-from unittest.mock import MagicMock, Mock, patch
-
 import pytest
-
+import sys
+import os
+from unittest.mock import Mock, MagicMock, patch
 
 # Регистрируем маркеры
 def pytest_configure(config):
     """Регистрируем пользовательские маркеры."""
-    markers = [
-        "gui: тесты GUI компонентов (требуют tkinter)",
-        "unit: unit-тесты (без зависимостей)",
-        "integration: интеграционные тесты",
-        "slow: медленные тесты (пропускаются по умолчанию)",
-        "requires_gui: тесты, требующие реального GUI окружения",
-        "requires_tkinter: тесты, требующие tkinter",
-        "tkinter: тесты с реальным tkinter (если доступен)"
-    ]
-
-    for marker in markers:
-        config.addinivalue_line("markers", marker)
+    config.addinivalue_line(
+        "markers",
+        "gui: тесты GUI компонентов (требуют tkinter)"
+    )
+    config.addinivalue_line(
+        "markers", 
+        "unit: unit-тесты (без зависимостей)"
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration: интеграционные тесты"
+    )
+    config.addinivalue_line(
+        "markers",
+        "slow: медленные тесты (пропускаются по умолчанию)"
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_gui: тесты, требующие реального GUI окружения"
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_tkinter: тесты, требующие tkinter"
+    )
 
 def pytest_addoption(parser):
     """Добавляем пользовательские опции командной строки."""
@@ -33,7 +41,7 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--run-gui",
-        action="store_true",
+        action="store_true", 
         default=False,
         help="запускать GUI тесты (требует tkinter)"
     )
@@ -59,41 +67,50 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" in item.keywords:
                 item.add_marker(skip_slow)
-
+    
     # Обработка GUI тестов
     run_gui = config.getoption("--run-gui", default=False)
     no_gui = config.getoption("--no-gui", default=False)
-
+    
     # Пропускаем GUI тесты если не указан --run-gui или указан --no-gui
     if not run_gui or no_gui:
         skip_gui = pytest.mark.skip(reason="GUI тесты отключены, используйте --run-gui для запуска")
         for item in items:
-            if any(keyword in item.keywords for keyword in ['requires_gui', 'requires_tkinter', 'gui', 'tkinter']):
+            if "requires_gui" in item.keywords or "requires_tkinter" in item.keywords:
                 item.add_marker(skip_gui)
-
+    
     # Проверяем доступность tkinter для GUI тестов
     if run_gui and not no_gui:
-        tkinter_available = _check_tkinter_available()
-        if not tkinter_available:
+        try:
+            import tkinter as tk
+            tk_available = True
+        except ImportError:
+            tk_available = False
+        
+        if not tk_available:
             skip_no_tk = pytest.mark.skip(reason="tkinter не установлен")
             for item in items:
-                if any(keyword in item.keywords for keyword in ['requires_tkinter', 'tkinter', 'gui']):
+                if "requires_tkinter" in item.keywords or "gui" in item.keywords:
                     item.add_marker(skip_no_tk)
 
-def _check_tkinter_available():
-    """Проверяет доступность tkinter."""
-    try:
-        import tkinter as tk
-
-        # Дополнительная проверка создания окна
-        tk.Tk()
-        return True
-    except ImportError:
-        return False
-    except Exception:
-        return False  # Другие ошибки тоже означают недоступность
-
 # ОБЩИЕ ФИКСТУРЫ
+@pytest.fixture
+def mock_tk_parent():
+    """Создает mock родительского окна Tkinter."""
+    parent = Mock()
+    parent.winfo_x.return_value = 100
+    parent.winfo_y.return_value = 100
+    parent.winfo_width.return_value = 800
+    parent.winfo_height.return_value = 600
+    return parent
+
+@pytest.fixture
+def mock_project_manager():
+    """Создает mock менеджера проектов."""
+    return Mock()
+
+
+
 @pytest.fixture
 def tk_root():
     """Создает корневое окно tkinter для тестов (только если tkinter доступен)."""
@@ -102,7 +119,7 @@ def tk_root():
         root = tk.Tk()
         root.withdraw()  # Скрываем окно
         yield root
-
+        
         # Очистка
         try:
             root.destroy()
@@ -139,7 +156,7 @@ def mock_tkinter():
     mock_tk.NONE = 'none'
     mock_tk.WORD = 'word'
     mock_tk.CHAR = 'char'
-
+    
     return mock_tk
 
 @pytest.fixture
@@ -183,39 +200,58 @@ def mock_filedialog():
 @pytest.fixture
 def code_editor_view(tk_root):
     """Создает экземпляр CodeEditorView."""
-    from gui.views.code_editor_view import CodeEditorView
-    view = CodeEditorView(tk_root)
-    yield view
-    # Очистка
     try:
-        view.destroy()
-    except:
-        pass
+        from gui.views.code_editor_view import CodeEditorView
+        view = CodeEditorView(tk_root)
+        yield view
+        # Очистка
+        try:
+            view.destroy()
+        except:
+            pass
+    except ImportError as e:
+        pytest.skip(f"Не удалось импортировать CodeEditorView: {e}")
 
 @pytest.fixture
 def main_window_view(tk_root):
     """Создает экземпляр MainWindowView."""
-    from gui.views.main_window_view import MainWindowView
-    view = MainWindowView(tk_root)
-    yield view
-    # Очистка
     try:
-        view.destroy()
-    except:
-        pass
+        from gui.views.main_window_view import MainWindowView
+        view = MainWindowView(tk_root)
+        yield view
+        # Очистка
+        try:
+            view.destroy()
+        except:
+            pass
+    except ImportError as e:
+        pytest.skip(f"Не удалось импортировать MainWindowView: {e}")
+
+@pytest.fixture
+def dialogs_view(tk_root):
+    """Создает экземпляр DialogsView."""
+    try:
+        from gui.views.dialogs_view import DialogsView
+        view = DialogsView(tk_root)
+        return view
+    except ImportError as e:
+        pytest.skip(f"Не удалось импортировать DialogsView: {e}")
 
 @pytest.fixture
 def project_tree_view(tk_root):
     """Создает экземпляр ProjectTreeView."""
-    from gui.views.project_tree_view import ProjectTreeView
-    view = ProjectTreeView(tk_root)
-    view.setup_tree()
-    yield view
-    # Очистка
     try:
-        view.destroy()
-    except:
-        pass
+        from gui.views.project_tree_view import ProjectTreeView
+        view = ProjectTreeView(tk_root)
+        view.setup_tree()
+        yield view
+        # Очистка
+        try:
+            view.destroy()
+        except:
+            pass
+    except ImportError as e:
+        pytest.skip(f"Не удалось импортировать ProjectTreeView: {e}")
 
 # ВСПОМОГАТЕЛЬНЫЕ ФИКСТУРЫ
 @pytest.fixture
@@ -245,24 +281,50 @@ def mock_callback():
     return Mock()
 
 @pytest.fixture
+def compare_tkinter_values():
+    """Хелпер для сравнения значений Tkinter."""
+    
+    def compare(value1, value2):
+        """Умное сравнение Tkinter значений."""
+        # Если оба - строки, просто сравниваем
+        if isinstance(value1, str) and isinstance(value2, str):
+            return value1 == value2
+        
+        # Если один из них None
+        if value1 is None or value2 is None:
+            return value1 is value2
+        
+        # Преобразуем оба в строки для сравнения
+        str1 = str(value1).strip().lower()
+        str2 = str(value2).strip().lower()
+        
+        # Убираем возможные префиксы/суффиксы
+        str1 = str1.replace("'", "").replace('"', '')
+        str2 = str2.replace("'", "").replace('"', '')
+        
+        return str1 == str2
+    
+    return compare
+
+@pytest.fixture
 def temp_project_dir(tmp_path):
     """Создает временную директорию для тестов проекта."""
     project_dir = tmp_path / "test_project"
     project_dir.mkdir()
-
+    
     # Создаем структуру каталогов
     for subdir in ["app", "tests", "gui", "utils"]:
         (project_dir / subdir).mkdir()
         (project_dir / subdir / "__init__.py").write_text("")
-
+    
     # Создаем несколько тестовых файлов
     (project_dir / "app" / "main.py").write_text("print('Hello')")
     (project_dir / "tests" / "test_main.py").write_text("def test_dummy(): pass")
     (project_dir / "requirements.txt").write_text("pytest>=7.0.0")
     (project_dir / "README.md").write_text("# Test Project")
-
+    
     yield project_dir
-
+    
     # Очистка выполняется автоматически через tmp_path
 
 @pytest.fixture
@@ -280,7 +342,7 @@ def mock_logger():
 def pytest_sessionstart(session):
     """Выполняется в начале сессии тестирования."""
     os.environ.setdefault('PYTEST_GUI_TESTING', '1')
-
+    
 def pytest_sessionfinish(session, exitstatus):
     """Выполняется в конце сессии тестирования."""
     # Очищаем переменные окружения

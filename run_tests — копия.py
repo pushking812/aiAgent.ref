@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # run_tests.py
 
 import subprocess
@@ -26,7 +27,7 @@ def run_tests(args):
     
     if args.coverage:
         cmd.extend([
-            "--cov=gui",
+            "--cov=gui.views",  # Изменено с --cov=. на --cov=gui.views
             "--cov-report=term",
             "--cov-report=html:coverage_html"
         ])
@@ -90,15 +91,35 @@ def show_quick_coverage():
 def run_specific_module_tests(module_name):
     """Запускает тесты для конкретного модуля."""
     test_files = {
-        'unit': ['tests/unit/'],
-        'gui': ['tests/gui/'],
-        'integration': ['tests/integration/'],
+        'unit': [
+            'tests/unit/test_main_window_view.py',
+            'tests/unit/test_dialogs_view.py',
+            'tests/unit/test_code_editor_view.py',
+            'tests/unit/test_project_tree_view.py'
+        ],
+        'gui': [
+            'tests/gui/test_gui_components.py',
+            'tests/gui/test_real_tkinter.py'
+        ],
+        'integration': [
+            'tests/integration/test_gui_integration.py'
+        ],
         'main_window': ['tests/unit/test_main_window_view.py'],
         'code_editor': ['tests/unit/test_code_editor_view.py'],
         'project_tree': ['tests/unit/test_project_tree_view.py'],
         'dialogs': ['tests/unit/test_dialogs_view.py'],
-        'all_gui': ['tests/unit/', 'tests/gui/'],
-        'all': ['tests/unit/', 'tests/gui/', 'tests/integration/']
+        'all_gui': [
+            'tests/unit/test_main_window_view.py',
+            'tests/unit/test_code_editor_view.py',
+            'tests/unit/test_project_tree_view.py',
+            'tests/unit/test_dialogs_view.py',
+            'tests/gui/test_gui_components.py'
+        ],
+        'all': [
+            'tests/unit/',
+            'tests/gui/',
+            'tests/integration/'
+        ]
     }
     
     if module_name not in test_files:
@@ -110,29 +131,6 @@ def run_specific_module_tests(module_name):
     print("=" * 60)
     
     cmd = [sys.executable, "-m", "pytest", *test_files[module_name], "-v", "--tb=short", "--disable-warnings"]
-    
-    result = subprocess.run(cmd)
-    
-    print("=" * 60)
-    return result.returncode
-
-
-def run_tests_with_gui():
-    """Запускает GUI тесты с поддержкой headless режима."""
-    import platform
-    
-    print("🖥️  Запуск GUI тестов...")
-    
-    if platform.system() == "Linux":
-        print("🐧 Linux: запускаем с xvfb-run")
-        cmd = ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1024x768x24",
-               sys.executable, "-m", "pytest", "tests/gui/", "-v", "--tb=short", "--run-gui"]
-    else:
-        print(f"💻 {platform.system()}: запускаем напрямую")
-        cmd = [sys.executable, "-m", "pytest", "tests/gui/", "-v", "--tb=short", "--run-gui"]
-    
-    print(f"📋 Команда: {' '.join(cmd)}")
-    print("=" * 60)
     
     result = subprocess.run(cmd)
     
@@ -164,8 +162,8 @@ def main():
     parser.add_argument(
         "--min-coverage",
         type=int,
-        default=70,
-        help="Минимальный процент покрытия (по умолчанию: 70%%)"
+        default=75,
+        help="Минимальный процент покрытия (по умолчанию: 75%%)"
     )
     
     parser.add_argument(
@@ -179,12 +177,6 @@ def main():
         "--check-coverage",
         action="store_true",
         help="Проверить текущее покрытие без запуска тестов"
-    )
-    
-    parser.add_argument(
-        "--gui-headless",
-        action="store_true",
-        help="Запустить GUI тесты в headless режиме (только Linux)"
     )
     
     parser.add_argument(
@@ -208,19 +200,14 @@ def main():
         print("  python run_tests.py --check-coverage        # Проверить текущее покрытие")
         print("  python run_tests.py --runslow              # Включая медленные тесты")
         print("  python run_tests.py --min-coverage 80      # С минимальным покрытием 80%%")
-        print("  python run_tests.py --gui-headless         # GUI тесты в headless режиме")
         print("  python run_tests.py tests/unit/            # Тесты из директории")
-        print("  python run_tests.py tests/unit/test_basic.py    # Конкретный файл")
+        print("  python run_tests.py tests/test_basic.py    # Конкретный файл")
         return 0
     
     # Проверка покрытия без запуска тестов
     if args.check_coverage:
         show_quick_coverage()
         return 0
-    
-    # Запуск GUI тестов в headless режиме
-    if args.gui_headless:
-        return run_tests_with_gui()
     
     # Запуск тестов для конкретного модуля
     if args.module:

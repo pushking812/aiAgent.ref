@@ -26,3 +26,9 @@ pre-commit>=3.0.0
 # Документация тестов
 pytest-html>=3.0.0
 pytest-xdist>=3.0.0
+
+# GUI тестирование
+xvfbwrapper>=0.2.9  # Для headless GUI тестирования на Linux
+
+# Модуль для сравнения Tkinter значений
+colorama>=0.4.6  # Для цветного вывода в тестах
