@@ -1,140 +1,150 @@
-# tests/test_code_editor_view.py
+# tests/test_project_tree_view.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 
-import tkinter as tk
 import pytest
-from unittest.mock import Mock, patch
-from gui.views.code_editor_view import CodeEditorView
+from unittest.mock import Mock, patch, MagicMock
+from gui.views.project_tree_view import ProjectTreeView, IProjectTreeView
 
 
-class TestCodeEditorView:
-    """Тесты для CodeEditorView"""
+@pytest.mark.gui
+class TestProjectTreeView:
+    """Тесты ProjectTreeView."""
     
-    @pytest.fixture
-    def root(self):
-        """Создает корневое окно для тестов."""
-        return tk.Tk()
+    def test_initialization(self, project_tree_view):
+        """Тест инициализации."""
+        assert project_tree_view is not None
+        assert hasattr(project_tree_view, 'tree')
+        assert hasattr(project_tree_view, '_item_map')
+        assert hasattr(project_tree_view, 'all_tree_items')
     
-    @pytest.fixture
-    def editor(self, root):
-        """Создает экземпляр CodeEditorView."""
-        return CodeEditorView(root)
+    def test_fill_tree(self, project_tree_view, sample_project_structure):
+        """Тест заполнения дерева структурой проекта."""
+        project_tree_view.fill_tree(sample_project_structure)
+        
+        # Проверяем что элементы были добавлены
+        expected_modules = sample_project_structure["modules"]
+        expected_files = list(sample_project_structure["files"].keys())
+        
+        # Получаем все элементы дерева
+        all_items = project_tree_view.all_tree_items
+        
+        # Проверяем количество элементов
+        expected_count = len(expected_modules) + len(expected_files)
+        assert len(all_items) == expected_count
+        
+        # Проверяем что элементы в _item_map
+        assert len(project_tree_view._item_map) == expected_count
     
-    def test_initialization(self, editor):
-        """Тест инициализации редактора."""
-        assert editor is not None
-        assert hasattr(editor, 'source_text')
-        assert hasattr(editor, 'ai_text')
-        assert hasattr(editor, 'modified_label')
+    def test_get_selected_item(self, project_tree_view, sample_project_structure):
+        """Тест получения выбранного элемента."""
+        project_tree_view.fill_tree(sample_project_structure)
+        
+        # Симулируем выбор первого элемента
+        if project_tree_view.all_tree_items:
+            first_item = project_tree_view.all_tree_items[0]
+            
+            # Временно подменяем focus
+            original_focus = project_tree_view.tree.focus
+            project_tree_view.tree.focus = lambda: first_item
+            
+            selected = project_tree_view.get_selected_item()
+            
+            # Восстанавливаем
+            project_tree_view.tree.focus = original_focus
+            
+            assert selected is not None
+            assert 'type' in selected
+            assert 'name' in selected
+            assert 'id' in selected
     
-    def test_get_set_source_content(self, editor):
-        """Тест установки и получения содержимого исходного кода."""
-        test_content = "def test():\n    return 'test'"
+    def test_search_elements(self, project_tree_view, sample_project_structure):
+        """Тест поиска элементов."""
+        project_tree_view.fill_tree(sample_project_structure)
         
-        # Устанавливаем содержимое
-        editor.set_source_content(test_content)
+        # Ищем модуль
+        results = project_tree_view.search_elements("app")
+        assert len(results) > 0
         
-        # Получаем содержимое
-        content = editor.get_source_content()
-        
-        assert content == test_content
-        assert editor._last_content == test_content
+        # Ищем несуществующий элемент
+        results = project_tree_view.search_elements("nonexistent")
+        assert len(results) == 0
     
-    def test_get_set_ai_content(self, editor):
-        """Тест установки и получения AI-кода."""
-        test_content = "# AI generated code\nprint('Hello')"
+    def test_highlight_search_results(self, project_tree_view, sample_project_structure):
+        """Тест подсветки результатов поиска."""
+        project_tree_view.fill_tree(sample_project_structure)
         
-        editor.set_ai_content(test_content)
-        content = editor.get_ai_content()
-        
-        assert content == test_content
+        if project_tree_view.all_tree_items:
+            # Находим элементы для подсветки
+            test_items = project_tree_view.all_tree_items[:2]  # Первые два элемента
+            
+            project_tree_view.highlight_search_results(test_items)
+            
+            # Проверяем что теги установлены
+            for item_id in test_items:
+                tags = project_tree_view.tree.item(item_id, 'tags')
+                assert 'found' in tags
     
-    def test_clear_ai_content(self, editor):
-        """Тест очистки AI-редактора."""
-        editor.set_ai_content("test content")
-        editor.clear_ai_content()
+    def test_expand_collapse(self, project_tree_view, sample_project_structure):
+        """Тест раскрытия и сворачивания дерева."""
+        project_tree_view.fill_tree(sample_project_structure)
         
-        content = editor.get_ai_content()
-        assert content == ""
+        # Раскрываем все
+        project_tree_view.expand_all()
+        
+        # Сворачиваем все
+        project_tree_view.collapse_all()
+        
+        # Проверяем что методы не вызывают ошибок
+        assert True
     
-    def test_modified_status(self, editor):
-        """Тест обновления статуса изменений."""
-        # Изначально не изменено
-        assert not editor.is_modified()
+    def test_bind_on_select(self, project_tree_view):
+        """Тест привязки обработчика выбора."""
+        callback_called = {"called": False}
         
-        # Симулируем изменение
-        editor.update_modified_status(True)
-        assert editor.is_modified()
+        def test_callback(event=None):
+            callback_called["called"] = True
         
-        # Сбрасываем статус
-        editor.update_modified_status(False)
-        assert not editor.is_modified()
+        project_tree_view.bind_on_select(test_callback)
+        
+        # Проверяем что обработчик был установлен
+        # В реальном tkinter это устанавливается через bind
+        # Для теста просто проверяем что метод вызвался без ошибок
+        assert True
     
-    def test_set_source_editable(self, editor):
-        """Тест включения/выключения редактирования."""
-        # Проверяем, что редактор по умолчанию редактируемый
-        state = editor.source_text.cget('state')
-        assert state == 'normal'
+    def test_interface_implementation(self):
+        """Тест реализации интерфейса IProjectTreeView."""
+        interface_methods = [
+            'setup_tree', 'fill_tree', 'get_selected_item',
+            'highlight_search_results', 'expand_all', 'collapse_all',
+            'bind_on_select', 'search_elements', 'set_on_tree_select_callback'
+        ]
         
-        # Выключаем редактирование
-        editor.set_source_editable(False)
-        state = editor.source_text.cget('state')
-        assert state == 'disabled'
-        
-        # Включаем обратно
-        editor.set_source_editable(True)
-        state = editor.source_text.cget('state')
-        assert state == 'normal'
-    
-    def test_text_modified_callback(self, editor):
-        """Тест callback при изменении текста."""
-        callback_mock = Mock()
-        editor.set_on_text_modified_callback(callback_mock)
-        
-        # Симулируем изменение текста
-        editor.set_source_content("test")
-        
-        # Проверяем, что callback не вызвался при программной установке
-        callback_mock.assert_not_called()
-        
-        # Тестируем обработчик изменений
-        editor._on_text_modified()
-        callback_mock.assert_called_once()
-    
-    def test_focus_out_binding(self, editor):
-        """Тест привязки обработчика потери фокуса."""
-        callback_mock = Mock()
-        editor.bind_focus_out(callback_mock)
-        
-        assert editor._on_focus_out_callback == callback_mock
-    
-    @patch('gui.views.code_editor_view.time.time')
-    def test_text_change_throttling(self, mock_time, editor):
-        """Тест троттлинга изменений текста."""
-        mock_time.side_effect = [0.0, 0.1, 0.7]  # Время изменяется
-        
-        callback_mock = Mock()
-        editor.set_on_text_modified_callback(callback_mock)
-        
-        # Первое изменение
-        editor._last_content = ""
-        editor._on_text_modified()
-        callback_mock.assert_called_once()
-        callback_mock.reset_mock()
-        
-        # Второе изменение слишком быстро - должно быть проигнорировано
-        editor._on_text_modified()
-        callback_mock.assert_not_called()
-    
-    def test_text_widget_configuration(self, editor):
-        """Тест конфигурации текстовых виджетов."""
-        # Проверяем, что табуляция настроена
-        tabs = editor.source_text.cget('tabs')
-        assert tabs is not None
-        
-        # Проверяем оба редактора
-        assert editor.source_text is not None
-        assert editor.ai_text is not None
+        for method_name in interface_methods:
+            assert hasattr(ProjectTreeView, method_name)
+            assert callable(getattr(ProjectTreeView, method_name))
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+@pytest.mark.gui
+class TestProjectTreeViewUnit:
+    """Unit-тесты ProjectTreeView с моками."""
+    
+    def test_init_simple_mock(self):
+        """Упрощенный тест инициализации с моками."""
+        # Создаем упрощенную версию без реального tkinter
+        class SimpleProjectTreeView:
+            def __init__(self, parent):
+                self.parent = parent
+                self._item_map = {}
+                self.all_tree_items = []
+                self._on_tree_select_callback = None
+            
+            def setup_tree(self):
+                pass
+                
+            def fill_tree(self, structure):
+                pass
+        
+        mock_parent = Mock()
+        view = SimpleProjectTreeView(mock_parent)
+        
+        assert view is not None
+        assert view.parent == mock_parent

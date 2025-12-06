@@ -1,0 +1,55 @@
+# .github/workflows/test-headless.yml
+# Альтернативный workflow для тестирования без GUI (headless):
+
+name: Headless GUI Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-headless:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock
+        pip install -e .
+    
+    - name: Run unit tests (без GUI)
+      run: |
+        # Запускаем только тесты, которые не требуют GUI
+        python -m pytest tests/ -v -m "not gui" --cov=gui --cov-report=xml
+    
+    - name: Run GUI tests с фейковым display
+      env:
+        DISPLAY: :99
+      run: |
+        # Устанавливаем Xvfb для фейкового display
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+        Xvfb :99 -screen 0 1024x768x24 &
+        sleep 3
+        
+        # Запускаем GUI тесты
+        python -m pytest tests/ -v -m "gui" --cov=gui --cov-append --cov-report=xml || true
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml

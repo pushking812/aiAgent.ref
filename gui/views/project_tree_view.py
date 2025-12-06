@@ -1,6 +1,5 @@
-# gui/views/project_tree_view.py
+# gui/views/project_tree_view.py - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
-from abc import ABC, abstractmethod
 import tkinter as tk
 from tkinter import ttk
 import os
@@ -11,22 +10,21 @@ import logging
 logger = logging.getLogger('ai_code_assistant')
 
 
-class IProjectTreeView(ABC):
+class IProjectTreeView:
+    """Интерфейс для дерева проекта."""
     def setup_tree(self): pass
     def fill_tree(self, project_structure): pass
-    def get_selected_item(self): pass
-    def highlight_search_results(self, items): pass
+    def get_selected_item(self) -> Dict: pass
+    def highlight_search_results(self, items: List[str]): pass
     def expand_all(self): pass
     def collapse_all(self): pass
-    def bind_on_select(self, callback): pass
+    def bind_on_select(self, callback: Callable): pass
     def search_elements(self, search_text: str) -> List[str]: pass
     def set_on_tree_select_callback(self, callback: Callable): pass
 
 
 class ProjectTreeView(ttk.Frame, IProjectTreeView):
-    """
-    Расширенная реализация дерева проекта с поиском по точечной нотации.
-    """
+    """Реализация дерева проекта."""
     
     def __init__(self, parent):
         super().__init__(parent)
@@ -57,34 +55,33 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         logger.debug("ProjectTreeView инициализирован")
 
     def setup_tree(self):
-        """
-        Инициализация колонок и настроек отображения дерева.
-        """
+        """Настраивает дерево."""
         self.tree.heading("#0", text="Структура проекта")
-        logger.debug("Дерево проекта настроено")
 
-    def fill_tree(self, project_structure):
-        """
-        Заполнить дерево проектной структурой (modules, files).
-        Ожидает project_structure в виде dict/ProjectModel.
-        """
+    def fill_tree(self, project_structure: Dict[str, Any]):
+        """Заполняет дерево структурой проекта."""
         self.tree.delete(*self.tree.get_children())
         self._item_map.clear()
         self.all_tree_items = []
         
-        # Пример для структуры: {"modules": [...], "files": {...}}
+        # Получаем данные
         modules = project_structure.get("modules", [])
         files = project_structure.get("files", {})
         
-        # Сначала добавляем модули
+        # Добавляем модули
         for module in modules:
             module_id = self.tree.insert("", "end", text=module, tags=('module',))
-            self._item_map[module_id] = {"type": "module", "name": module, "path": module}
+            self._item_map[module_id] = {
+                "type": "module", 
+                "name": module, 
+                "path": module,
+                "full_path": module
+            }
             self.all_tree_items.append(module_id)
         
-        # Затем добавляем файлы
+        # Добавляем файлы
         for file_path in files:
-            # Найдём модуль-родителя, если файл внутри модуля
+            # Находим родителя (модуль)
             parent_id = ""
             for module in modules:
                 if file_path.startswith(module):
@@ -100,30 +97,18 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                 "full_path": file_path
             }
             self.all_tree_items.append(file_id)
-            
-            # Для Python файлов можно добавить элементы кода
-            if file_path.endswith('.py'):
-                self._add_code_elements(file_id, file_path, files[file_path])
         
-        logger.debug("Дерево проекта заполнено: modules=%s, files=%s", len(modules), len(files))
+        logger.debug("Дерево заполнено: modules=%s, files=%s", len(modules), len(files))
 
-    def _add_code_elements(self, parent_id: str, file_path: str, file_content: str):
-        """Добавляет элементы кода к файлу в дереве (базовая реализация)"""
-        # В новой архитектуре парсинг AST должен быть в сервисе
-        # Здесь просто отмечаем, что файл можно парсить
-        pass
-
-    def _find_tree_item_by_name(self, name):
+    def _find_tree_item_by_name(self, name: str) -> str:
+        """Находит элемент дерева по имени."""
         for item_id, item_data in self._item_map.items():
             if item_data.get("name") == name:
                 return item_id
         return ""
 
     def get_selected_item(self) -> Dict:
-        """
-        Получить выделенный элемент в дереве.
-        Возвращает dict: {'id', 'type', 'name', 'path', 'full_path'}
-        """
+        """Возвращает выбранный элемент."""
         selection = self.tree.focus()
         if selection in self._item_map:
             item_data = self._item_map[selection].copy()
@@ -132,10 +117,8 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         return {}
 
     def highlight_search_results(self, items: List[str]):
-        """
-        Подсвечивает результаты поиска.
-        """
-        # Сбрасываем предыдущую подсветку
+        """Подсвечивает результаты поиска."""
+        # Сбрасываем подсветку
         for item_id in self.all_tree_items:
             self.tree.item(item_id, tags=())
         
@@ -149,8 +132,8 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         if items:
             self._expand_to_item(items[0])
 
-    def _expand_to_item(self, item_id):
-        """Раскрывает дерево до указанного элемента"""
+    def _expand_to_item(self, item_id: str):
+        """Раскрывает дерево до элемента."""
         parent_id = self.tree.parent(item_id)
         while parent_id:
             self.tree.item(parent_id, open=True)
@@ -161,46 +144,39 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self.tree.see(item_id)
 
     def expand_all(self):
-        """Рекурсивно раскрыть все ветки дерева."""
+        """Раскрывает все ветки."""
         for item in self.tree.get_children():
             self._expand_recursive(item)
 
-    def _expand_recursive(self, item):
+    def _expand_recursive(self, item: str):
+        """Рекурсивно раскрывает ветку."""
         self.tree.item(item, open=True)
         for child in self.tree.get_children(item):
             self._expand_recursive(child)
 
     def collapse_all(self):
-        """Рекурсивно свернуть все ветки дерева."""
+        """Сворачивает все ветки."""
         for item in self.tree.get_children():
             self._collapse_recursive(item)
 
-    def _collapse_recursive(self, item):
+    def _collapse_recursive(self, item: str):
+        """Рекурсивно сворачивает ветку."""
         self.tree.item(item, open=False)
         for child in self.tree.get_children(item):
             self._collapse_recursive(child)
 
-    def bind_on_select(self, callback):
-        """Привязать обработчик выбора элемента дерева."""
+    def bind_on_select(self, callback: Callable):
+        """Привязывает обработчик выбора."""
         self.tree.bind("<<TreeviewSelect>>", callback)
 
-    def set_on_tree_select_callback(self, callback: Callable):
-        """Устанавливает callback для обработки выбора в дереве"""
-        self._on_tree_select_callback = callback
-        self.tree.bind('<<TreeviewSelect>>', lambda e: callback())
-
     def search_elements(self, search_text: str) -> List[str]:
-        """
-        Выполняет поиск элементов в дереве с поддержкой точечной нотации.
-        """
-        search_text_lower = search_text.lower()
+        """Ищет элементы в дереве."""
+        search_lower = search_text.lower()
         results = []
         
-        # Проверяем, использует ли запрос точечную нотацию
-        if '.' in search_text_lower:
-            # Используем точечную нотацию
-            parts = search_text_lower.split('.')
-            
+        # Поиск по точечной нотации
+        if '.' in search_lower:
+            parts = search_lower.split('.')
             for item_id in self.all_tree_items:
                 full_path = self._get_item_full_path(item_id).lower()
                 if self._matches_dot_notation(full_path, parts):
@@ -209,14 +185,13 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             # Обычный поиск
             for item_id in self.all_tree_items:
                 item_text = self.tree.item(item_id, 'text').lower()
-                if search_text_lower in item_text:
+                if search_lower in item_text:
                     results.append(item_id)
         
-        logger.debug("Поиск завершен: запрос='%s', найдено=%s", search_text, len(results))
         return results
 
     def _get_item_full_path(self, item_id: str) -> str:
-        """Возвращает полный путь элемента в формате module.class.method"""
+        """Возвращает полный путь элемента."""
         path_parts = []
         current_id = item_id
         
@@ -229,10 +204,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         return '.'.join(path_parts)
 
     def _matches_dot_notation(self, full_path: str, search_parts: List[str]) -> bool:
-        """
-        Проверяет соответствие полного пути поисковому запросу с точками.
-        """
-        # Очищаем путь от эмодзи и форматирования
+        """Проверяет соответствие точечной нотации."""
         clean_path = self._clean_search_path(full_path)
         path_parts = clean_path.split('.')
         
@@ -252,14 +224,17 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         return False
 
     def _clean_search_path(self, path: str) -> str:
-        """Очищает путь для поиска - убирает эмодзи и специальные символы"""
-        # Убираем эмодзи и специальные символы
+        """Очищает путь для поиска."""
         cleaned = re.sub(r'[🔹📦📝⚡🏛️📋❓()]', '', path)
-        # Убираем лишние пробелы и точки
         cleaned = re.sub(r'\s+', '', cleaned)
         cleaned = cleaned.strip('.')
         return cleaned.lower()
 
+    def set_on_tree_select_callback(self, callback: Callable):
+        """Устанавливает callback для выбора."""
+        self._on_tree_select_callback = callback
+        self.tree.bind('<<TreeviewSelect>>', lambda e: callback())
+
     def get_all_items(self) -> List[str]:
-        """Возвращает список всех ID элементов дерева"""
+        """Возвращает все элементы дерева."""
         return self.all_tree_items
