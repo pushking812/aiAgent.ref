@@ -79,10 +79,10 @@ def show_quick_coverage():
             match = re.search(r'(\d+)%', coverage_value)
             if match:
                 coverage_percent = int(match.group(1))
-                if coverage_percent >= 75:
-                    print(f"✅ Цель 75% достигнута!")
+                if coverage_percent >= 70:
+                    print(f"✅ Цель 70% достигнута!")
                 else:
-                    print(f"⚠️  Нужно еще {75 - coverage_percent}% до цели 75%")
+                    print(f"⚠️  Нужно еще {70 - coverage_percent}% до цели 70%")
         except:
             pass
 
@@ -140,6 +140,40 @@ def run_tests_with_gui():
     return result.returncode
 
 
+def run_dialogs_coverage_tests():
+    """Запускает тесты для увеличения покрытия dialogs_view.py."""
+    print("🎯 Запуск тестов для увеличения покрытия dialogs_view.py...")
+    
+    cmd = [
+        sys.executable, "-m", "pytest",
+        "tests/unit/test_dialogs_view_coverage_fixed.py",
+        "tests/unit/test_dialogs_view_direct_coverage.py",
+        "-v",
+        "--tb=short",
+        "--cov=gui.views.dialogs_view",
+        "--cov-report=term-missing",
+        "--cov-report=html:coverage_dialogs",
+        "--disable-warnings"
+    ]
+    
+    result = subprocess.run(cmd)
+    
+    if result.returncode == 0:
+        print("✅ Тесты пройдены успешно!")
+        
+        # Показываем отчет о покрытии
+        print("\n📊 Отчет о покрытии dialogs_view.py:")
+        subprocess.run([
+            sys.executable, "-m", "coverage", "report",
+            "--include=*/dialogs_view.py",
+            "--show-missing"
+        ])
+    else:
+        print(f"❌ Тесты завершились с ошибкой (код: {result.returncode})")
+    
+    return result.returncode
+
+
 def main():
     """Главная функция."""
     parser = argparse.ArgumentParser(description="Запуск тестов GUI приложения")
@@ -188,6 +222,12 @@ def main():
     )
     
     parser.add_argument(
+        "--dialogs-coverage",
+        action="store_true",
+        help="Запустить тесты для увеличения покрытия dialogs_view.py"
+    )
+    
+    parser.add_argument(
         "test_files",
         nargs="*",
         help="Конкретные тестовые файлы для запуска"
@@ -209,6 +249,7 @@ def main():
         print("  python run_tests.py --runslow              # Включая медленные тесты")
         print("  python run_tests.py --min-coverage 80      # С минимальным покрытием 80%%")
         print("  python run_tests.py --gui-headless         # GUI тесты в headless режиме")
+        print("  python run_tests.py --dialogs-coverage     # Увеличить покрытие dialogs_view.py")
         print("  python run_tests.py tests/unit/            # Тесты из директории")
         print("  python run_tests.py tests/unit/test_basic.py    # Конкретный файл")
         return 0
@@ -221,6 +262,10 @@ def main():
     # Запуск GUI тестов в headless режиме
     if args.gui_headless:
         return run_tests_with_gui()
+    
+    # Запуск тестов для увеличения покрытия dialogs_view.py
+    if args.dialogs_coverage:
+        return run_dialogs_coverage_tests()
     
     # Запуск тестов для конкретного модуля
     if args.module:

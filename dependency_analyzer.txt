@@ -1,0 +1,20 @@
+# Установка зависимостей (для графической версии)
+pip install graphviz
+
+# Запуск анализа в текущей директории
+python dependency_analyzer.py
+
+# Анализ конкретной директории
+python dependency_analyzer.py /path/to/project
+
+# Только текстовый отчет
+python dependency_analyzer.py --text
+
+# Сохранение в SVG
+python dependency_analyzer.py -f svg
+
+# С включением внешних зависимостей
+python dependency_analyzer.py -e
+
+# С исключением директорий
+python dependency_analyzer.py --exclude tests migrations
