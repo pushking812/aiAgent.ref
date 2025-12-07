@@ -1,46 +1,17 @@
-Примеры использования:
-    Простой поиск с выводом по умолчанию (путь: кодировка):
-python file_encoding_finder.py /path/to/directory
-    Поиск с конкретными расширениями:
-python file_encoding_finder.py /path/to/directory --extensions .txt .csv
-    Подробный вывод:
-python file_encoding_finder.py /path/to/directory --verbose
-    Сохранить в файл:
-python file_encoding_finder.py /path/to/directory --output results
-    Только путь и кодировка (quiet режим):
-python file_encoding_finder.py /path/to/directory --quiet
-    С ограничением вывода:
-python file_encoding_finder.py /path/to/directory --limit 10
-    Комбинированные параметры:
-python file_encoding_finder.py /path/to/directory --extensions .txt .py --encodings utf8 --verbose --output results.json --format json
+# Искать все файлы (по умолчанию)
+python file_encoding_finder.py /path/to/dir
 
-Пример вывода по умолчанию:
+# Искать только файлы без расширения
+python file_encoding_finder.py /path/to/dir -e .
 
-/home/user/documents/file1.txt: utf-8
-/home/user/documents/file2.txt: windows-1251
-/home/user/documents/subdir/file3.csv: utf-8
+# Искать файлы с расширением .txt и без расширения
+python file_encoding_finder.py /path/to/dir -e .txt .
 
-Пример подробного вывода (с --verbose):
+# Искать файлы с расширением .txt или .csv (можно без точки)
+python file_encoding_finder.py /path/to/dir -e txt csv
 
-Поиск файлов в: /home/user/documents
-Расширения: ['.txt', '.csv']
-Кодировки: ['utf8', 'win1251']
+# Искать файлы с любым расширением .py
+python file_encoding_finder.py /path/to/dir -e .py
 
-============================================================
-Найдено файлов: 3
-============================================================
-1. /home/user/documents/file1.txt
-   Кодировка: utf-8
-   Размер: 1024 байт
-   Расширение: .txt
-   Директория: /home/user/documents
-2. /home/user/documents/file2.txt
-   Кодировка: windows-1251
-   Размер: 2048 байт
-   Расширение: .txt
-   Директория: /home/user/documents
-3. /home/user/documents/subdir/file3.csv
-   Кодировка: utf-8
-   Размер: 512 байт
-   Расширение: .csv
-   Директория: /home/user/documents/subdir
+# Комбинированный пример
+python file_encoding_finder.py /path/to/dir -e .txt .py . -c utf8 win1251 -x node_modules --verbose
