@@ -22,16 +22,20 @@ class ICodeEditorView(ABC):
     def set_source_editable(self, editable: bool): pass
     def update_modified_status(self, modified: bool): pass
     def bind_focus_out(self, callback: Callable): pass
+    def setup_auto_save_checkbox(self, var: tk.BooleanVar): pass
+    def is_modified(self) -> bool: pass
+    def get_source_text_widget(self): pass
+    def get_ai_text_widget(self): pass
 
 
 class CodeEditorView(ttk.Frame, ICodeEditorView):
     """
-    Расширенная реализация редактора с отслеживанием изменений и автосохранением.
+    Расширенная реализация редактора с точной структурой как в старом коде.
     """
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(fill=tk.BOTH, expand=True)
+        self.pack(fill=tk.BOTH, expand=True)  # Заполняем весь родительский контейнер
 
         # Инициализация переменных для отслеживания изменений
         self._last_content = ""
@@ -39,18 +43,19 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self._on_text_modified_callback: Optional[Callable] = None
         self._on_focus_out_callback: Optional[Callable] = None
         self._is_modified = False
+        self._auto_save_var = None
 
-        # --- Редактор исходного кода ---
+        # --- Редактор исходного кода (верхняя часть) ---
         source_container = ttk.Frame(self)
-        source_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+        source_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))  # Отступ снизу 5px
 
-        # Заголовок и кнопки
+        # Заголовок исходного кода
         source_header = ttk.Frame(source_container)
         source_header.pack(fill=tk.X)
 
         ttk.Label(source_header, text="Исходный код", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
 
-        # Статус изменений
+        # Статус изменений (справа от заголовка)
         self.modified_label = ttk.Label(
             source_header,
             text="",
@@ -59,11 +64,11 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         )
         self.modified_label.pack(side=tk.LEFT, padx=(10, 0))
 
-        # Кнопки для исходного кода
-        source_buttons_frame = ttk.Frame(source_header)
-        source_buttons_frame.pack(side=tk.RIGHT)
+        # Галочка автосохранения (справа от статуса)
+        self.auto_save_frame = ttk.Frame(source_header)
+        self.auto_save_frame.pack(side=tk.RIGHT)
 
-        # Редактор исходного кода
+        # Сам редактор исходного кода
         source_frame = ttk.Frame(source_container)
         source_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -71,21 +76,17 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self.source_text.pack(fill=tk.BOTH, expand=True)
         self._configure_text_widget(self.source_text)
 
-        # --- Редактор AI-кода ---
+        # --- Редактор AI-кода (нижняя часть) ---
         ai_container = ttk.Frame(self)
         ai_container.pack(fill=tk.BOTH, expand=True)
 
-        # Заголовок и кнопки
+        # Заголовок AI-кода
         ai_header = ttk.Frame(ai_container)
         ai_header.pack(fill=tk.X)
 
         ttk.Label(ai_header, text="AI-код / Сценарий", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
 
-        # Кнопки для AI кода
-        ai_buttons_frame = ttk.Frame(ai_header)
-        ai_buttons_frame.pack(side=tk.RIGHT)
-
-        # Редактор AI кода
+        # Сам редактор AI кода с фиксированной высотой
         ai_frame = ttk.Frame(ai_container)
         ai_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -96,24 +97,71 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         logger.debug("CodeEditorView инициализирован")
 
     def _configure_text_widget(self, text_widget: scrolledtext.ScrolledText):
-        """Настраивает текстовый виджет (табуляция)"""
+        """Настраивает текстовый виджет (табуляция) как в старом коде."""
         try:
             import tkinter.font as font
             current_font = text_widget.cget('font')
             font_obj = font.Font(font=current_font)
             tab_width = font_obj.measure(' ' * 4)
             text_widget.configure(tabs=(tab_width,))
+            # Настройка шрифта как в старом коде
+            text_widget.configure(font=('Courier', 10))
         except Exception as e:
             logger.warning("Не удалось настроить Tab: %s", e)
             text_widget.configure(tabs=32)
 
+    def setup_auto_save_checkbox(self, var: tk.BooleanVar):
+        """Настраивает галочку автосохранения как в старом коде."""
+        self._auto_save_var = var
+        
+        # Получаем родительский контейнер редактора исходного кода
+        source_container = self.source_text.master.master.master
+        
+        # Создаем фрейм для галочки (как в старом коде)
+        auto_save_frame = ttk.Frame(source_container)
+        auto_save_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+        
+        self.auto_save_check = ttk.Checkbutton(
+            auto_save_frame,
+            text="Автосохранение при переключении",
+            variable=var,
+            command=self._on_auto_save_blur_changed
+        )
+        self.auto_save_check.pack(side=tk.LEFT)
+        
+        # Привязываем обработку потери фокуса
+        self.source_text.bind('<FocusOut>', self._on_editor_focus_out)
+        
+        logger.debug("Галочка автосохранения настроена как в старом коде")
+
+    def _on_auto_save_blur_changed(self):
+        """Обработчик изменения галочки автосохранения."""
+        if self._auto_save_var:
+            new_value = self._auto_save_var.get()
+            logger.info("Автосохранение при переключении: %s", 
+                       "включено" if new_value else "выключено")
+
+    def _on_editor_focus_out(self, event):
+        """Обработчик потери фокуса редактором."""
+        try:
+            auto_save_enabled = self._auto_save_var.get() if self._auto_save_var else False
+            logger.debug("Потеря фокуса редактором: auto_save=%s, is_modified=%s", 
+                        auto_save_enabled, self._is_modified)
+            
+            if auto_save_enabled and self._is_modified and self._on_focus_out_callback:
+                logger.info("Автосохранение при потере фокуса")
+                self._on_focus_out_callback(event)
+                
+        except Exception as e:
+            logger.error("Ошибка в обработчике потери фокуса: %s", e)
+
     def set_on_text_modified_callback(self, callback: Callable):
-        """Устанавливает callback для обработки изменений текста"""
+        """Устанавливает callback для обработки изменений текста."""
         self._on_text_modified_callback = callback
         logger.debug("Callback для изменений текста установлен")
 
     def bind_focus_out(self, callback: Callable):
-        """Привязывает обработчик потери фокуса"""
+        """Привязывает обработчик потери фокуса."""
         if self.source_text:
             self.source_text.bind('<FocusOut>', callback)
             self._on_focus_out_callback = callback
@@ -125,16 +173,16 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self._on_text_modified_callback = callback
 
     def _on_text_modified(self, event=None):
-        """Обработчик изменения текста в редакторе"""
+        """Обработчик изменения текста в редакторе."""
         try:
-            # Пропускаем служебные клавиши
+            # Пропускаем служебные клавиши как в старом коде
             if event and event.keysym in ['Shift_L', 'Shift_R', 'Control_L', 'Control_R',
                                           'Alt_L', 'Alt_R', 'Caps_Lock', 'Num_Lock']:
                 return
 
             current_time = time.time()
-            # Защита от слишком частых срабатываний
-            if current_time - self._last_modified_time < 0.5:  # 500 мс задержка
+            # Защита от слишком частых срабатываний (500 мс как в старом коде)
+            if current_time - self._last_modified_time < 0.5:
                 return
             self._last_modified_time = current_time
 
@@ -159,16 +207,16 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
                 self._on_text_modified_callback(event)
 
         except Exception as e:
-            logger.error("? Ошибка в обработчике изменения текста: %s", e, exc_info=True)
+            logger.error("Ошибка в обработчике изменения текста: %s", e, exc_info=True)
 
     def get_source_content(self):
-        """Получить контент исходного кода"""
+        """Получить контент исходного кода."""
         content = self.source_text.get("1.0", tk.END).rstrip("\n")
         logger.debug("Получено содержимое редактора: %s символов", len(content))
         return content
 
     def set_source_content(self, text):
-        """Устанавливает содержимое редактора исходного кода"""
+        """Устанавливает содержимое редактора исходного кода."""
         logger.debug("Установка содержимого редактора: %s символов", len(text))
 
         # Временно отключаем отслеживание изменений
@@ -200,13 +248,13 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         logger.debug("Содержимое установлено успешно")
 
     def get_ai_content(self):
-        """Получить AI-код (сценарий)"""
+        """Получить AI-код (сценарий)."""
         content = self.ai_text.get("1.0", tk.END).rstrip("\n")
         logger.debug("Получено содержимое AI редактора: %s символов", len(content))
         return content
 
     def set_ai_content(self, text):
-        """Устанавливает AI-код (сценарий)"""
+        """Устанавливает AI-код (сценарий)."""
         logger.debug("Установка содержимого AI редактора: %s символов", len(text))
         self.ai_text.delete("1.0", tk.END)
         self.ai_text.insert("1.0", text)
@@ -214,18 +262,18 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self.ai_text.update()
 
     def clear_ai_content(self):
-        """Очищает поле AI-кода"""
+        """Очищает поле AI-кода."""
         self.ai_text.delete("1.0", tk.END)
         logger.debug("AI редактор очищен")
 
     def set_source_editable(self, editable: bool):
-        """Включает/выключает редактирование исходного кода"""
+        """Включает/выключает редактирование исходного кода."""
         state = tk.NORMAL if editable else tk.DISABLED
         self.source_text.config(state=state)
         logger.debug("Редактирование исходного кода: %s", "включено" if editable else "выключено")
 
     def update_modified_status(self, modified: bool):
-        """Обновляет статус изменений в интерфейсе"""
+        """Обновляет статус изменений в интерфейсе."""
         self._is_modified = modified
         if modified:
             self.modified_label.config(text="[ИЗМЕНЕНО]")
@@ -237,5 +285,13 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self.ai_text.bind("<KeyRelease>", callback)
 
     def is_modified(self) -> bool:
-        """Возвращает статус изменений"""
+        """Возвращает статус изменений."""
         return self._is_modified
+
+    def get_source_text_widget(self):
+        """Возвращает виджет редактора исходного кода."""
+        return self.source_text
+
+    def get_ai_text_widget(self):
+        """Возвращает виджет редактора AI-кода."""
+        return self.ai_text

@@ -1,7 +1,10 @@
 # gui/controller/analysis_controller.py
 
+import difflib
+
 from gui.views.main_window_view import IMainWindowView
 from gui.views.dialogs_view import DialogsView
+from gui.views.analysis_view import IAnalysisView
 from core.business.analysis_service import IAnalysisService
 
 class AnalysisController:
@@ -12,10 +15,12 @@ class AnalysisController:
         self,
         main_window_view: IMainWindowView,
         dialogs_view: DialogsView,
+        analysis_view: IAnalysisView,
         analysis_service: IAnalysisService,
     ):
         self.main_window_view = main_window_view
         self.dialogs_view = dialogs_view
+        self.analysis_view = analysis_view
         self.analysis_service = analysis_service
 
     def on_analyze_code(self, project_path):
@@ -52,8 +57,7 @@ class AnalysisController:
         """
         Показать различия между двумя версиями кода.
         """
-        import difflib
         diff = "\n".join(difflib.unified_diff(
             old_code.splitlines(), new_code.splitlines(),
-            fromfile="Старый", tofile="Новый"))
+            fromfile="Старый", tofile="Новый", lineterm=""))
         self.dialogs_view.show_diff(diff, title="Сравнение изменений анализа")

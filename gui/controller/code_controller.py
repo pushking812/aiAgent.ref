@@ -4,6 +4,7 @@ from gui.views.code_editor_view import ICodeEditorView
 from gui.views.main_window_view import IMainWindowView
 from gui.views.dialogs_view import DialogsView
 from core.business.code_service import ICodeService
+import difflib
 
 class CodeController:
     """
@@ -43,6 +44,8 @@ class CodeController:
         """
         ai_code = self.code_view.get_ai_content()
         # Здесь можно анализировать или валидировать AI-код
+        if ai_code:
+            self.main_window_view.set_status(f"AI-код: {len(ai_code)} символов")
 
     def on_add_ai_code(self):
         """
@@ -79,15 +82,19 @@ class CodeController:
         Очистить поле AI-кода.
         """
         self.code_view.clear_ai_content()
+        self.main_window_view.set_status("Поле AI-кода очищено")
 
     def on_show_file_diff(self, old_code, new_code):
         """
         Показать различия между версиями файла (diff).
         """
-        import difflib
         diff = "\n".join(
             difflib.unified_diff(
-                old_code.splitlines(), new_code.splitlines(), fromfile="Старый", tofile="Новый"
+                old_code.splitlines(), new_code.splitlines(), 
+                fromfile="Старый", tofile="Новый", lineterm=""
             )
         )
-        self.dialogs_view.show_diff(diff, title="Сравнение версий файла")
+        if diff:
+            self.dialogs_view.show_diff(diff, title="Сравнение версий файла")
+        else:
+            self.main_window_view.show_info("Сравнение", "Файлы идентичны")

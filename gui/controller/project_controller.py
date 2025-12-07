@@ -1,5 +1,8 @@
 # gui/controller/project_controller.py
 
+import tkinter as tk
+from tkinter import ttk
+
 from gui.views.main_window_view import IMainWindowView
 from gui.views.project_tree_view import IProjectTreeView
 from gui.views.dialogs_view import DialogsView

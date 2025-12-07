@@ -15,10 +15,11 @@ class IDialogsView(ABC):
     def show_diff(self, diff_text: str, title: str): pass
     def show_info_dialog(self, title: str, message: str): pass
     def show_error_dialog(self, title: str, message: str): pass
-    def show_warning_dialog(self, title: str, message: str): pass
+    def show_warning_dialog(self, title: str, message: str) -> bool: pass
     def ask_directory(self, title: str) -> Optional[str]: pass
     def show_project_creation_dialog(self, project_manager) -> Optional[Tuple]: pass
     def show_directory_overwrite_dialog(self, directory_path: str, project_name: str) -> bool: pass
+    def show_pending_changes_dialog(self, changes: List) -> bool: pass
 
 
 class DialogsView(IDialogsView):
@@ -70,9 +71,9 @@ class DialogsView(IDialogsView):
         """Ошибка или предупреждение."""
         messagebox.showerror(title, message)
 
-    def show_warning_dialog(self, title: str, message: str):
-        """Показать предупреждение."""
-        messagebox.showwarning(title, message)
+    def show_warning_dialog(self, title: str, message: str) -> bool:
+        """Показать предупреждение с подтверждением."""
+        return messagebox.askyesno(title, message)
 
     def ask_directory(self, title: str) -> Optional[str]:
         """Открывает диалог выбора директории."""
@@ -92,6 +93,11 @@ class DialogsView(IDialogsView):
         Возвращает: True (перезаписать), False (отмена)
         """
         dialog = DirectoryOverwriteDialog(self.parent, directory_path, project_name)
+        return dialog.show()
+
+    def show_pending_changes_dialog(self, changes: List) -> bool:
+        """Показать диалог отложенных изменений."""
+        dialog = PendingChangesDialog(self.parent, changes)
         return dialog.show()
 
 
@@ -197,7 +203,6 @@ class ProjectCreationDialog:
             # Проверяем, существует ли директория
             if os.path.exists(full_project_path) and os.listdir(full_project_path):
                 # Директория не пуста - показываем диалог перезаписи
-                # from .dialogs_view import DirectoryOverwriteDialog
                 overwrite_dialog = DirectoryOverwriteDialog(dialog, full_project_path, name)
                 if not overwrite_dialog.show():
                     return
@@ -250,3 +255,70 @@ class DirectoryOverwriteDialog:
             f"Продолжить?"
         )
         return result
+
+
+class PendingChangesDialog:
+    """Диалог отложенных изменений."""
+    
+    def __init__(self, parent, changes: List):
+        self.parent = parent
+        self.changes = changes
+        self.result = False
+    
+    def show(self) -> bool:
+        """Показать диалог."""
+        dialog = tk.Toplevel(self.parent)
+        dialog.title(f"Отложенные изменения ({len(self.changes)})")
+        dialog.geometry("600x400")
+        
+        main_frame = ttk.Frame(dialog, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Список изменений
+        tree_frame = ttk.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        columns = ('action', 'entity', 'file')
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
+        
+        tree.heading('action', text='Действие')
+        tree.heading('entity', text='Элемент')
+        tree.heading('file', text='Файл')
+        
+        tree.column('action', width=100)
+        tree.column('entity', width=200)
+        tree.column('file', width=200)
+        
+        for change in self.changes:
+            tree.insert('', 'end', values=(
+                change.get('action', ''),
+                change.get('entity', ''),
+                change.get('file', '')
+            ))
+        
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Кнопки
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X)
+        
+        def on_apply():
+            self.result = True
+            dialog.destroy()
+        
+        def on_discard():
+            self.result = False
+            dialog.destroy()
+        
+        ttk.Button(button_frame, text="Применить", command=on_apply).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Отменить", command=on_discard).pack(side=tk.RIGHT, padx=5)
+        
+        dialog.transient(self.parent)
+        dialog.grab_set()
+        self.parent.wait_window(dialog)
+        
+        return self.result
