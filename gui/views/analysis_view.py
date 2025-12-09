@@ -1,133 +1,188 @@
 # gui/views/analysis_view.py
 
-import logging
 import tkinter as tk
+from tkinter import ttk
 from abc import ABC, abstractmethod
-from tkinter import ttk, scrolledtext
 from typing import Callable, Optional
+import logging
+
+from gui.utils.ui_factory import ui_factory
 
 logger = logging.getLogger('ai_code_assistant')
 
 
 class IAnalysisView(ABC):
     def setup_analysis_panel(self, parent): pass
-    def clear_analysis(self): pass
     def add_analysis_result(self, result_type: str, message: str, file: str = "", line: int = 0): pass
+    def clear_analysis(self): pass
     def show_analysis_report(self): pass
     def bind_analyze_code(self, callback: Callable): pass
     def bind_show_analysis_report(self, callback: Callable): pass
     def bind_auto_refactor(self, callback: Callable): pass
-    def get_widget(self): pass
 
 
 class AnalysisView(ttk.Frame, IAnalysisView):
-    """Панель результатов анализа кода расположенная внизу как в старом коде."""
+    """Представление анализа кода с использованием фабрики UI."""
     
     def __init__(self, parent):
         super().__init__(parent)
+        self.pack(fill=tk.BOTH, expand=True)
         
-        # Панель анализа занимает нижнюю часть
-        analysis_frame = ttk.LabelFrame(self, text="Результаты анализа кода")
-        analysis_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # Дерево результатов
-        tree_frame = ttk.Frame(analysis_frame)
-        tree_frame.pack(fill=tk.BOTH, expand=True)
-        
-        columns = ('type', 'file', 'line', 'message')
-        self.analysis_tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
-        
-        self.analysis_tree.heading('type', text='Тип')
-        self.analysis_tree.heading('file', text='Файл')
-        self.analysis_tree.heading('line', text='Строка')
-        self.analysis_tree.heading('message', text='Сообщение')
-        
-        self.analysis_tree.column('type', width=80)
-        self.analysis_tree.column('file', width=150)
-        self.analysis_tree.column('line', width=50)
-        self.analysis_tree.column('message', width=300)
-        
-        tree_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.analysis_tree.yview)
-        self.analysis_tree.configure(yscrollcommand=tree_scrollbar.set)
-        
-        self.analysis_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Кнопки управления анализом
-        button_frame = ttk.Frame(analysis_frame)
-        button_frame.pack(fill=tk.X, pady=(5, 0))
-        
-        self.analyze_button = ttk.Button(button_frame, text="🔍 Анализировать")
-        self.analyze_button.pack(side=tk.LEFT, padx=2)
-        
-        self.show_report_button = ttk.Button(button_frame, text="📊 Показать отчет")
-        self.show_report_button.pack(side=tk.LEFT, padx=2)
-        
-        self.refactor_button = ttk.Button(button_frame, text="🛠️ Авторефакторинг")
-        self.refactor_button.pack(side=tk.LEFT, padx=2)
+        self._on_analyze_callback: Optional[Callable] = None
+        self._on_report_callback: Optional[Callable] = None
+        self._on_refactor_callback: Optional[Callable] = None
         
         logger.debug("AnalysisView инициализирован")
-
+    
     def setup_analysis_panel(self, parent):
-        """Настраивает панель анализа."""
-        # Настройка тегов для цветового кодирования
-        self.analysis_tree.tag_configure('error', foreground='red')
-        self.analysis_tree.tag_configure('warning', foreground='orange')
-        self.analysis_tree.tag_configure('info', foreground='blue')
-        self.analysis_tree.tag_configure('success', foreground='green')
-
-    def clear_analysis(self):
-        """Очищает результаты анализа."""
-        for item in self.analysis_tree.get_children():
-            self.analysis_tree.delete(item)
-
-    def add_analysis_result(self, result_type: str, message: str, file: str = "", line: int = 0):
-        """Добавляет результат анализа."""
-        item_id = self.analysis_tree.insert(
-            '', 'end',
-            values=(result_type, file, line, message)
+        """Настраивает панель анализа с использованием фабрики."""
+        # Основной фрейм анализа
+        analysis_frame = ui_factory.create_label_frame(parent, text="Анализ кода", padding=5)
+        analysis_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Панель инструментов анализа
+        toolbar_frame = ui_factory.create_frame(analysis_frame)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        self.analyze_button = ui_factory.create_button(
+            toolbar_frame,
+            text="🔍 Анализировать",
+            tooltip="Запустить анализ кода проекта"
+        )
+        self.analyze_button.pack(side=tk.LEFT, padx=2)
+        
+        self.report_button = ui_factory.create_button(
+            toolbar_frame,
+            text="📊 Отчет",
+            tooltip="Показать подробный отчет анализа"
+        )
+        self.report_button.pack(side=tk.LEFT, padx=2)
+        
+        self.refactor_button = ui_factory.create_button(
+            toolbar_frame,
+            text="🛠️ Рефакторинг",
+            tooltip="Автоматический рефакторинг кода"
+        )
+        self.refactor_button.pack(side=tk.LEFT, padx=2)
+        
+        # Область вывода результатов
+        results_frame = ui_factory.create_frame(analysis_frame)
+        results_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Treeview для результатов анализа
+        columns = ('type', 'message', 'file', 'line')
+        self.results_tree = ui_factory.create_treeview(
+            results_frame,
+            columns=columns,
+            show='headings'
         )
         
-        # Цвет в зависимости от типа
-        tags = (result_type,)
-        self.analysis_tree.item(item_id, tags=tags)
-
+        # Настраиваем колонки
+        self.results_tree.heading('type', text='Тип')
+        self.results_tree.heading('message', text='Сообщение')
+        self.results_tree.heading('file', text='Файл')
+        self.results_tree.heading('line', text='Строка')
+        
+        self.results_tree.column('type', width=80)
+        self.results_tree.column('message', width=300)
+        self.results_tree.column('file', width=150)
+        self.results_tree.column('line', width=60)
+        
+        # Настраиваем теги для разных типов результатов
+        self.results_tree.tag_configure('info', foreground='blue')
+        self.results_tree.tag_configure('warning', foreground='orange')
+        self.results_tree.tag_configure('error', foreground='red')
+        self.results_tree.tag_configure('success', foreground='green')
+        
+        # Полоса прокрутки
+        scrollbar = ui_factory.create_scrollbar(
+            results_frame,
+            orient="vertical",
+            command=self.results_tree.yview
+        )
+        self.results_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        logger.debug("Панель анализа настроена")
+    
+    def add_analysis_result(self, result_type: str, message: str, file: str = "", line: int = 0):
+        """Добавляет результат анализа в дерево."""
+        # Определяем иконку по типу
+        icons = {
+            'info': 'ℹ️',
+            'warning': '⚠️',
+            'error': '❌',
+            'success': '✅'
+        }
+        
+        icon = icons.get(result_type, '❓')
+        display_type = f"{icon} {result_type}"
+        
+        # Вставляем строку
+        item_id = self.results_tree.insert(
+            '',
+            'end',
+            values=(display_type, message, file, line),
+            tags=(result_type,)
+        )
+        
+        # Автопрокрутка к новому элементу
+        self.results_tree.see(item_id)
+        
+        logger.debug(f"Добавлен результат анализа: {result_type} - {message}")
+    
+    def clear_analysis(self):
+        """Очищает все результаты анализа."""
+        for item in self.results_tree.get_children():
+            self.results_tree.delete(item)
+        
+        logger.debug("Результаты анализа очищены")
+    
     def show_analysis_report(self):
-        """Показывает полный отчет анализа."""
-        # Создаем окно с полным отчетом
-        report_window = tk.Toplevel(self)
-        report_window.title("Полный отчет анализа")
-        report_window.geometry("800x600")
+        """Показывает отчет анализа."""
+        # Собираем статистику
+        items = self.results_tree.get_children()
+        if not items:
+            logger.debug("Нет данных для отчета")
+            return
         
-        report_text = scrolledtext.ScrolledText(report_window, wrap=tk.WORD)
-        report_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Подсчитываем типы
+        counts = {'info': 0, 'warning': 0, 'error': 0, 'success': 0}
+        for item in items:
+            tags = self.results_tree.item(item, 'tags')
+            if tags:
+                counts[tags[0]] += 1
         
-        # Собираем все результаты
-        report = "ОТЧЕТ АНАЛИЗА КОДА\n"
-        report += "=" * 50 + "\n\n"
+        # Создаем отчет
+        report = f"Отчет анализа кода:\n"
+        report += f"Всего проблем: {len(items)}\n"
+        report += f"Информационных: {counts['info']}\n"
+        report += f"Предупреждений: {counts['warning']}\n"
+        report += f"Ошибок: {counts['error']}\n"
+        report += f"Успешных: {counts['success']}\n"
         
-        for item in self.analysis_tree.get_children():
-            values = self.analysis_tree.item(item, 'values')
-            report += f"{values[0]}: {values[1]}:{values[2]} - {values[3]}\n"
+        logger.info(f"Показан отчет анализа: {len(items)} проблем")
         
-        report_text.insert('1.0', report)
-        report_text.config(state='disabled')
-        
-        close_button = ttk.Button(report_window, text="Закрыть", command=report_window.destroy)
-        close_button.pack(pady=5)
-
+        # Показываем в диалоге
+        import tkinter.messagebox as messagebox
+        messagebox.showinfo("Отчет анализа", report)
+    
     def bind_analyze_code(self, callback: Callable):
-        """Привязывает обработчик к кнопке 'Анализировать'."""
+        """Привязывает обработчик анализа кода."""
+        self._on_analyze_callback = callback
         self.analyze_button.config(command=callback)
-
+        logger.debug("Обработчик анализа кода привязан")
+    
     def bind_show_analysis_report(self, callback: Callable):
-        """Привязывает обработчик к кнопке 'Показать отчет'."""
-        self.show_report_button.config(command=callback)
-
+        """Привязывает обработчик показа отчета."""
+        self._on_report_callback = callback
+        self.report_button.config(command=callback)
+        logger.debug("Обработчик отчета привязан")
+    
     def bind_auto_refactor(self, callback: Callable):
-        """Привязывает обработчик к кнопке 'Авторефакторинг'."""
+        """Привязывает обработчик рефакторинга."""
+        self._on_refactor_callback = callback
         self.refactor_button.config(command=callback)
-
-    def get_widget(self):
-        """Возвращает сам виджет для размещения."""
-        return self
+        logger.debug("Обработчик рефакторинга привязан")

@@ -5,6 +5,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Optional
 
+from gui.utils.ui_factory import ui_factory, Tooltip
+
+
 class IMainWindowView(ABC):
     def set_status(self, text: str): pass
     def show_info(self, title: str, msg: str): pass
@@ -30,101 +33,169 @@ class IMainWindowView(ABC):
     def get_auto_save_var(self) -> tk.BooleanVar: pass
     def get_content_panel(self) -> ttk.Frame: pass
 
+
 class MainWindowView(ttk.Frame, IMainWindowView):
     def __init__(self, root):
         super().__init__(root)
-        self.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)  # Внешние отступы как в старом коде
+        self.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Создаем главный контейнер (как в старом коде self.main_container)
-        self.main_container = ttk.Frame(self)
+        # Настраиваем стили
+        ui_factory.setup_default_styles()
+        
+        # Создаем главный контейнер
+        self.main_container = ui_factory.create_frame(self)
         self.main_container.pack(fill=tk.BOTH, expand=True)
         
-        # Верхняя панель управления (точная копия старого кода)
-        top_panel = ttk.Frame(self.main_container)
-        top_panel.pack(fill=tk.X, pady=(0, 5))  # Точные отступы как в старом коде
+        # Верхняя панель управления с использованием фабрики
+        top_panel = ui_factory.create_frame(self.main_container)
+        top_panel.pack(fill=tk.X, pady=(0, 5))
         
-        # Кнопки проекта с иконками как в старом коде
-        project_buttons = [
-            {'text': '🆕', 'tooltip': 'Создать новый проект', 'square': True},
-            {'text': '📁', 'tooltip': 'Открыть проект', 'square': True},
-            {'text': '📐', 'tooltip': 'Создать структуру из AI', 'square': True},
-            {'text': '🔄', 'tooltip': 'Обновить проект', 'square': True},
-            {'text': '💾', 'tooltip': 'Сохранить все файлы', 'square': True},
-            {'text': '📋', 'tooltip': 'Показать отложенные изменения', 'square': True},
-            {'text': '❌', 'tooltip': 'Закрыть проект', 'square': True},
+        # Конфигурация кнопок проекта
+        project_buttons_config = [
+            {'text': '🆕', 'tooltip': 'Создать новый проект', 'square': True, 'padx': 2},
+            {'text': '📁', 'tooltip': 'Открыть проект', 'square': True, 'padx': 2},
+            {'text': '📐', 'tooltip': 'Создать структуру из AI', 'square': True, 'padx': 2},
+            {'text': '🔄', 'tooltip': 'Обновить проект', 'square': True, 'padx': 2},
+            {'text': '💾', 'tooltip': 'Сохранить все файлы', 'square': True, 'padx': 2},
+            {'text': '📋', 'tooltip': 'Показать отложенные изменения', 'square': True, 'padx': 2},
+            {'text': '❌', 'tooltip': 'Закрыть проект', 'square': True, 'padx': 2},
         ]
         
-        # Фрейм для кнопок проекта с подписью
-        project_label = ttk.Label(top_panel, text="Проект:")
+        # Фрейм для кнопок проекта
+        project_frame = ui_factory.create_frame(top_panel)
+        project_frame.pack(side=tk.LEFT)
+        
+        project_label = ui_factory.create_label(project_frame, text="Проект:")
         project_label.pack(side=tk.LEFT, padx=(0, 5))
         
-        self.create_project_button = self._create_button(top_panel, '🆕', padx=2)
-        self.open_project_button = self._create_button(top_panel, '📁', padx=2)
-        self.create_structure_button = self._create_button(top_panel, '📐', padx=2)
-        self.refresh_project_button = self._create_button(top_panel, '🔄', padx=2)
-        self.save_project_button = self._create_button(top_panel, '💾', padx=2)
-        self.show_pending_changes_button = self._create_button(top_panel, '📋', padx=2)
-        self.close_project_button = self._create_button(top_panel, '❌', padx=2)
+        # Создаем кнопки проекта через фабрику
+        self.create_project_button = ui_factory.create_button(
+            project_frame, '🆕', square=True, tooltip='Создать новый проект'
+        )
+        self.create_project_button.pack(side=tk.LEFT, padx=2)
+        
+        self.open_project_button = ui_factory.create_button(
+            project_frame, '📁', square=True, tooltip='Открыть проект'
+        )
+        self.open_project_button.pack(side=tk.LEFT, padx=2)
+        
+        self.create_structure_button = ui_factory.create_button(
+            project_frame, '📐', square=True, tooltip='Создать структуру из AI'
+        )
+        self.create_structure_button.pack(side=tk.LEFT, padx=2)
+        
+        self.refresh_project_button = ui_factory.create_button(
+            project_frame, '🔄', square=True, tooltip='Обновить проект'
+        )
+        self.refresh_project_button.pack(side=tk.LEFT, padx=2)
+        
+        self.save_project_button = ui_factory.create_button(
+            project_frame, '💾', square=True, tooltip='Сохранить все файлы'
+        )
+        self.save_project_button.pack(side=tk.LEFT, padx=2)
+        
+        self.show_pending_changes_button = ui_factory.create_button(
+            project_frame, '📋', square=True, tooltip='Показать отложенные изменения'
+        )
+        self.show_pending_changes_button.pack(side=tk.LEFT, padx=2)
+        
+        self.close_project_button = ui_factory.create_button(
+            project_frame, '❌', square=True, tooltip='Закрыть проект'
+        )
+        self.close_project_button.pack(side=tk.LEFT, padx=2)
         
         # Разделитель
-        ttk.Separator(top_panel, orient='vertical').pack(side=tk.LEFT, padx=20, fill=tk.Y)
+        separator1 = ui_factory.create_separator(top_panel, orient='vertical')
+        separator1.pack(side=tk.LEFT, padx=20, fill=tk.Y)
         
         # Кнопки анализа кода
-        analysis_label = ttk.Label(top_panel, text="Анализ кода:")
+        analysis_frame = ui_factory.create_frame(top_panel)
+        analysis_frame.pack(side=tk.LEFT)
+        
+        analysis_label = ui_factory.create_label(analysis_frame, text="Анализ кода:")
         analysis_label.pack(side=tk.LEFT, padx=(0, 5))
         
-        self.analyze_code_button = self._create_button(top_panel, '🔍', padx=2)
-        self.show_analysis_report_button = self._create_button(top_panel, '📊', padx=2)
-        self.auto_refactor_button = self._create_button(top_panel, '🛠️', padx=2)
+        self.analyze_code_button = ui_factory.create_button(
+            analysis_frame, '🔍', square=True, tooltip='Анализировать код проекта'
+        )
+        self.analyze_code_button.pack(side=tk.LEFT, padx=2)
+        
+        self.show_analysis_report_button = ui_factory.create_button(
+            analysis_frame, '📊', square=True, tooltip='Показать отчет анализа'
+        )
+        self.show_analysis_report_button.pack(side=tk.LEFT, padx=2)
+        
+        self.auto_refactor_button = ui_factory.create_button(
+            analysis_frame, '🛠️', square=True, tooltip='Авторефакторинг кода'
+        )
+        self.auto_refactor_button.pack(side=tk.LEFT, padx=2)
         
         # Разделитель
-        ttk.Separator(top_panel, orient='vertical').pack(side=tk.LEFT, padx=20, fill=tk.Y)
+        separator2 = ui_factory.create_separator(top_panel, orient='vertical')
+        separator2.pack(side=tk.LEFT, padx=20, fill=tk.Y)
         
         # Кнопки редактора кода
-        editor_label = ttk.Label(top_panel, text="Редактор:")
+        editor_frame = ui_factory.create_frame(top_panel)
+        editor_frame.pack(side=tk.LEFT)
+        
+        editor_label = ui_factory.create_label(editor_frame, text="Редактор:")
         editor_label.pack(side=tk.LEFT, padx=(0, 5))
         
-        self.save_current_file_button = self._create_button(top_panel, '💾', padx=2)
-        self.delete_selected_element_button = self._create_button(top_panel, '🗑️', padx=2)
+        self.save_current_file_button = ui_factory.create_button(
+            editor_frame, '💾', square=True, tooltip='Сохранить текущий файл'
+        )
+        self.save_current_file_button.pack(side=tk.LEFT, padx=2)
+        
+        self.delete_selected_element_button = ui_factory.create_button(
+            editor_frame, '🗑️', square=True, tooltip='Удалить выбранный элемент'
+        )
+        self.delete_selected_element_button.pack(side=tk.LEFT, padx=2)
         
         # Разделитель
-        ttk.Separator(top_panel, orient='vertical').pack(side=tk.LEFT, padx=20, fill=tk.Y)
+        separator3 = ui_factory.create_separator(top_panel, orient='vertical')
+        separator3.pack(side=tk.LEFT, padx=20, fill=tk.Y)
         
         # Кнопки AI кода
-        ai_label = ttk.Label(top_panel, text="AI Код:")
+        ai_frame = ui_factory.create_frame(top_panel)
+        ai_frame.pack(side=tk.LEFT)
+        
+        ai_label = ui_factory.create_label(ai_frame, text="AI Код:")
         ai_label.pack(side=tk.LEFT, padx=(0, 5))
         
-        self.add_ai_code_button = self._create_button(top_panel, '➕', padx=2)
-        self.replace_selected_element_button = self._create_button(top_panel, '🔄', padx=2)
-        self.clear_ai_code_button = self._create_button(top_panel, '🧹', padx=2)
+        self.add_ai_code_button = ui_factory.create_button(
+            ai_frame, '➕', square=True, tooltip='Добавить AI код в проект'
+        )
+        self.add_ai_code_button.pack(side=tk.LEFT, padx=2)
         
-        # Правая часть - статус проекта и индикатор изменений
-        status_frame = ttk.Frame(top_panel)
+        self.replace_selected_element_button = ui_factory.create_button(
+            ai_frame, '🔄', square=True, tooltip='Заменить выбранный элемент AI кодом'
+        )
+        self.replace_selected_element_button.pack(side=tk.LEFT, padx=2)
+        
+        self.clear_ai_code_button = ui_factory.create_button(
+            ai_frame, '🧹', square=True, tooltip='Очистить поле AI кода'
+        )
+        self.clear_ai_code_button.pack(side=tk.LEFT, padx=2)
+        
+        # Правая часть - статус проекта
+        status_frame = ui_factory.create_frame(top_panel)
         status_frame.pack(side=tk.RIGHT, padx=10)
         
-        self.status_label = ttk.Label(status_frame, text="Проект не открыт")
+        self.status_label = ui_factory.create_label(status_frame, text="Проект не открыт")
         self.status_label.pack(side=tk.LEFT)
         
-        # Индикатор несохраненных изменений
-        self.unsaved_changes_label = ttk.Label(
-            status_frame, 
-            text="", 
+        # Индикатор несохраненных изменений (используем tk.Label для форматирования)
+        self.unsaved_changes_label = tk.Label(
+            status_frame,
+            text="",
             foreground="red",
             font=('Arial', 9, 'bold')
         )
         self.unsaved_changes_label.pack(side=tk.LEFT, padx=(10, 0))
 
-        # Основная панель контента (для размещения других компонентов)
-        self.content_panel = ttk.Frame(self.main_container)
+        # Основная панель контента
+        self.content_panel = ui_factory.create_frame(self.main_container)
         self.content_panel.pack(fill=tk.BOTH, expand=True)
-        
-        # Галочка автосохранения будет добавлена в CodeEditorView как в старом коде
-
-    def _create_button(self, parent, text, padx=0):
-        """Создает кнопку квадратной формы как в старом коде."""
-        btn = ttk.Button(parent, text=text, width=3)
-        btn.pack(side=tk.LEFT, padx=padx)
-        return btn
 
     def set_status(self, text: str):
         """Установить строку статуса приложения."""
@@ -136,12 +207,10 @@ class MainWindowView(ttk.Frame, IMainWindowView):
 
     def set_auto_save_var(self, var: tk.BooleanVar):
         """Установить переменную автосохранения."""
-        # Реализуется в CodeEditorView
         pass
 
     def get_auto_save_var(self) -> tk.BooleanVar:
         """Получить переменную автосохранения."""
-        # Реализуется в CodeEditorView
         return tk.BooleanVar(value=False)
 
     def show_info(self, title: str, msg: str):

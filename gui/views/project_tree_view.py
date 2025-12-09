@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from gui.utils.ui_factory import ui_factory, Tooltip
+
 logger = logging.getLogger('ai_code_assistant')
 
 
@@ -24,23 +26,21 @@ class IProjectTreeView:
     def find_next(self): pass
     def setup_search_panel(self, parent): pass
     def setup_tree_buttons(self, parent): pass
-    def _get_display_info(self, node) -> Tuple[str, str]: pass
-    def _get_directory_structure(self, directory: str) -> Dict: pass
     def load_project_structure(self, directory: str): pass
     def get_tree_widget(self) -> ttk.Treeview: pass
 
 
 class ProjectTreeView(ttk.Frame, IProjectTreeView):
-    """Реализация дерева проекта с точной структурой как в старом коде."""
+    """Реализация дерева проекта с использованием фабрики UI."""
     
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(fill=tk.BOTH, expand=True)  # Заполняем весь родительский контейнер
+        self.pack(fill=tk.BOTH, expand=True)
         
-        # Основной контейнер для дерева (левая панель)
-        self.tree_container = ttk.Frame(self, width=300)  # Фиксированная ширина 300px как в старом коде
-        self.tree_container.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))  # Отступ справа 5px
-        self.tree_container.pack_propagate(False)  # Фиксируем ширину
+        # Основной контейнер для дерева
+        self.tree_container = ui_factory.create_frame(self, width=300)
+        self.tree_container.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))
+        self.tree_container.pack_propagate(False)
         
         # Инициализация
         self.search_results: List[str] = []
@@ -52,19 +52,23 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         logger.debug("ProjectTreeView инициализирован")
 
     def setup_search_panel(self, parent):
-        """Создает панель поиска как в старом коде."""
-        search_frame = ttk.LabelFrame(parent, text="Быстрый поиск")
-        search_frame.pack(fill=tk.X, pady=(0, 5))  # Отступ снизу 5px
+        """Создает панель поиска с использованием фабрики."""
+        search_frame = ui_factory.create_label_frame(parent, text="Быстрый поиск", padding=5)
+        search_frame.pack(fill=tk.X, pady=(0, 5))
         
         self.search_var = tk.StringVar()
-        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
-        self.search_entry.pack(fill=tk.X, padx=5, pady=5)  # Внутренние отступы
+        self.search_entry = ui_factory.create_entry(
+            search_frame,
+            textvariable=self.search_var,
+            tooltip="Введите текст для поиска элементов"
+        )
+        self.search_entry.pack(fill=tk.X, padx=5, pady=5)
         
-        self.search_hint = ttk.Label(
-            search_frame, 
-            text="Введите имя элемента (module.function, module.class.method)", 
-            foreground="gray", 
-            font=('Arial', 8)
+        self.search_hint = ui_factory.create_label(
+            search_frame,
+            text="Введите имя элемента (module.function, module.class.method)",
+            small=True,
+            foreground="gray"
         )
         self.search_hint.pack(fill=tk.X, padx=5, pady=(0, 5))
         
@@ -72,45 +76,62 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self.search_entry.bind('<KeyRelease>', self._on_search_changed)
 
     def setup_tree_buttons(self, parent):
-        """Создает кнопки управления деревом как в старом коде."""
-        tree_buttons_config = [
-            {'text': '👁️', 'tooltip': 'Раскрыть все ветки', 'square': True},
-            {'text': '🙈', 'tooltip': 'Свернуть все ветки', 'square': True},
-            {'text': '🔍', 'tooltip': 'Следующий результат', 'square': True},
-        ]
+        """Создает кнопки управления деревом с использованием фабрики."""
+        tree_buttons_frame = ui_factory.create_label_frame(parent, text="Дерево", padding=5)
+        tree_buttons_frame.pack(fill=tk.X, pady=(0, 5))
         
-        tree_buttons_frame = ttk.LabelFrame(parent, text="Дерево")
-        tree_buttons_frame.pack(fill=tk.X, pady=(0, 5))  # Отступ снизу 5px
-        
-        # Создаем кнопки
-        self.expand_all_button = ttk.Button(tree_buttons_frame, text="👁️", width=3)
+        # Создаем кнопки через фабрику
+        self.expand_all_button = ui_factory.create_button(
+            tree_buttons_frame,
+            text="👁️",
+            square=True,
+            tooltip="Раскрыть все ветки"
+        )
         self.expand_all_button.pack(side=tk.LEFT, padx=2)
         
-        self.collapse_all_button = ttk.Button(tree_buttons_frame, text="🙈", width=3)
+        self.collapse_all_button = ui_factory.create_button(
+            tree_buttons_frame,
+            text="🙈",
+            square=True,
+            tooltip="Свернуть все ветки"
+        )
         self.collapse_all_button.pack(side=tk.LEFT, padx=2)
         
-        self.find_next_button = ttk.Button(tree_buttons_frame, text="🔍", width=3)
+        self.find_next_button = ui_factory.create_button(
+            tree_buttons_frame,
+            text="🔍",
+            square=True,
+            tooltip="Следующий результат поиска"
+        )
         self.find_next_button.pack(side=tk.LEFT, padx=2)
 
     def setup_tree(self):
-        """Создает само дерево проекта как в старом коде."""
-        tree_frame = ttk.LabelFrame(self.tree_container, text="Структура проекта")
+        """Создает само дерево проекта с использованием фабрики."""
+        tree_frame = ui_factory.create_label_frame(self.tree_container, text="Структура проекта")
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
-        tree_container = ttk.Frame(tree_frame)
+        tree_container = ui_factory.create_frame(tree_frame)
         tree_container.pack(fill=tk.BOTH, expand=True)
         
-        # Создаем Treeview с колонками как в старом коде
-        self.tree = ttk.Treeview(tree_container, show='tree', columns=('path', 'type'))
+        # Создаем Treeview через фабрику
+        self.tree = ui_factory.create_treeview(
+            tree_container,
+            columns=('path', 'type'),
+            show='tree'
+        )
         
         # Настраиваем колонки
         self.tree.heading("#0", text="Структура проекта")
-        self.tree.column("#0", width=250, minwidth=150)  # Ширина как в старом коде
-        self.tree.column("path", width=0, stretch=False)  # Скрытая колонка
-        self.tree.column("type", width=0, stretch=False)  # Скрытая колонка
+        self.tree.column("#0", width=250, minwidth=150)
+        self.tree.column("path", width=0, stretch=False)
+        self.tree.column("type", width=0, stretch=False)
         
-        # Полоса прокрутки
-        tree_scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
+        # Полоса прокрутки через фабрику
+        tree_scrollbar = ui_factory.create_scrollbar(
+            tree_container,
+            orient="vertical",
+            command=self.tree.yview
+        )
         self.tree.configure(yscrollcommand=tree_scrollbar.set)
         
         # Размещение
@@ -121,16 +142,17 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self.tree.tag_configure('found', background='#e6f3ff')
         self.tree.tag_configure('module', foreground='blue')
         self.tree.tag_configure('file', foreground='green')
-        self.tree.tag_configure('directory', foreground='#8B4513')  # Коричневый для директорий
-        
+        self.tree.tag_configure('directory', foreground='#8B4513')
+
     def _on_search_changed(self, event):
         """Обработчик изменения текста в поле поиска."""
         search_text = self.search_var.get().strip()
         
         if not search_text:
             self.search_hint.config(
-                text="Введите имя элемента (module.function, module.class.method)", 
-                foreground="gray")
+                text="Введите имя элемента (module.function, module.class.method)",
+                foreground="gray"
+            )
             self.highlight_search_results([])
             self.search_results = []
             return
@@ -139,14 +161,16 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         
         if self.search_results:
             self.search_hint.config(
-                text=f"Найдено элементов: {len(self.search_results)}", 
-                foreground="green")
+                text=f"Найдено элементов: {len(self.search_results)}",
+                foreground="green"
+            )
             self.highlight_search_results(self.search_results)
             self.current_search_index = 0
         else:
             self.search_hint.config(
-                text="Элементы не найдены", 
-                foreground="red")
+                text="Элементы не найдены",
+                foreground="red"
+            )
             self.highlight_search_results([])
             self.current_search_index = -1
 
@@ -160,12 +184,11 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self._expand_to_item(next_item)
 
     def fill_tree(self, project_structure: Dict[str, Any]):
-        """Заполняет дерево структурой проекта с эмодзи как в старом коде."""
+        """Заполняет дерево структурой проекта с эмодзи."""
         self.tree.delete(*self.tree.get_children())
         self._item_map.clear()
         self.all_tree_items = []
 
-        # Получаем данные
         modules = project_structure.get("modules", [])
         files = project_structure.get("files", {})
         directories = project_structure.get("directories", [])
@@ -213,23 +236,14 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         logger.debug("Дерево заполнено: modules=%s, files=%s, directories=%s", 
                     len(modules), len(files), len(directories))
 
-    def _find_tree_item_by_name(self, name: str) -> str:
-        """Находит элемент дерева по имени."""
-        for item_id, item_data in self._item_map.items():
-            if item_data.get("name") == name:
-                return item_id
-        return ""
-
     def get_selected_item(self) -> Dict:
         """Возвращает выбранный элемент."""
         selection = self.tree.focus()
         if selection in self._item_map:
             item_data = self._item_map[selection].copy()
             item_data['id'] = selection
-            # Извлекаем чистые данные (без эмодзи)
             if 'display_name' in item_data:
                 display_text = item_data['display_name']
-                # Убираем эмодзи для чистого имени
                 clean_name = re.sub(r'[🔹📦📝⚡🏛️📋❓📁📄()]', '', display_text).strip()
                 item_data['clean_name'] = clean_name
             return item_data
@@ -302,13 +316,11 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                 item_name = item_data.get('name', '').lower()
                 item_type = item_data.get('type', '')
                 
-                # Для файлов ищем по полному пути
                 if item_type == 'file':
                     full_path = item_data.get('full_path', '').lower()
                     if self._matches_dot_notation(full_path, parts):
                         results.append(item_id)
                 else:
-                    # Для других элементов ищем по имени
                     if self._matches_dot_notation(item_name, parts):
                         results.append(item_id)
         else:
@@ -330,11 +342,9 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
 
     def _matches_dot_notation(self, text: str, search_parts: List[str]) -> bool:
         """Проверяет соответствие точечной нотации."""
-        # Преобразуем путь в формат для поиска
         search_text = text.replace(os.sep, '.').replace('/', '.').replace('\\', '.')
         search_text = search_text.lower()
         
-        # Ищем все части последовательно
         for i in range(len(search_text) - len('.'.join(search_parts)) + 1):
             match = True
             combined_search = '.'.join(search_parts)
@@ -352,49 +362,6 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         """Возвращает все элементы дерева."""
         return self.all_tree_items
 
-    def _get_display_info(self, node) -> Tuple[str, str]:
-        """Возвращает отображаемое имя и тип для узла."""
-        node_type = node.get('type', 'unknown')
-        node_name = node.get('name', '')
-        
-        type_emojis = {
-            'module': '📦',
-            'file': '📄',
-            'directory': '📁',
-            'class': '🏛️',
-            'function': '⚡',
-            'method': '🔹',
-            'global_section': '📋',
-            'import_section': '📥',
-            'async_function': '⚡'
-        }
-        
-        emoji = type_emojis.get(node_type, '❓')
-        
-        if node_type in ['function', 'method', 'async_function']:
-            display_name = f"{emoji} {node_name}()"
-        else:
-            display_name = f"{emoji} {node_name}"
-        
-        return display_name, node_type
-
-    def _get_directory_structure(self, directory: str) -> Dict:
-        """Получает структуру директории."""
-        structure = {'files': [], 'directories': []}
-        
-        try:
-            for item in os.listdir(directory):
-                item_path = os.path.join(directory, item)
-                if os.path.isdir(item_path):
-                    structure['directories'].append(item)
-                else:
-                    if item.endswith('.py'):
-                        structure['files'].append(item)
-        except Exception as e:
-            logger.error(f"Ошибка чтения директории {directory}: {e}")
-        
-        return structure
-
     def load_project_structure(self, directory: str):
         """Загружает структуру проекта из директории."""
         if not os.path.exists(directory):
@@ -409,7 +376,6 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         
         # Рекурсивно обходим директорию
         for root, dirs, files in os.walk(directory):
-            # Пропускаем скрытые директории
             dirs[:] = [d for d in dirs if not d.startswith('.')]
             
             rel_root = os.path.relpath(root, directory)
