@@ -2,6 +2,7 @@
 """
 Рекурсивный поиск файлов по кодировкам с использованием charset-normalizer.
 Наиболее надежный метод определения кодировок.
+Включает скрытые файлы и папки.
 """
 
 import os
@@ -71,14 +72,16 @@ class FileEncodingFinder:
         'utf-32': 'utf-32',
     }
     
-    def __init__(self, sample_size: int = 8192):
+    def __init__(self, sample_size: int = 8192, include_hidden: bool = True):
         """
         Инициализация поисковика
         
         Args:
             sample_size: Размер сэмпла для анализа кодировки (в байтах)
+            include_hidden: Включать ли скрытые файлы и папки в поиск
         """
         self.sample_size = sample_size
+        self.include_hidden = include_hidden
         
         if not CHARSET_NORMALIZER_AVAILABLE:
             print("Ошибка: библиотека charset-normalizer не установлена.")
@@ -182,17 +185,6 @@ class FileEncodingFinder:
             print(f"Неожиданная ошибка при обработке файла {file_path}: {e}", file=sys.stderr)
             return None
     
-    def validate_encoding_by_reading(self, file_path: str, encoding: str, read_size: int = 4096) -> bool:
-        """Проверяет кодировку, пытаясь прочитать файл"""
-        try:
-            with open(file_path, 'r', encoding=encoding, errors='strict') as f:
-                f.read(read_size)
-            return True
-        except (UnicodeDecodeError, LookupError):
-            return False
-        except Exception:
-            return False
-    
     def is_excluded(self, item_path: Path, root_path: Path, exclude_set: Set[str]) -> bool:
         """Проверяет, исключена ли директория или файл"""
         if not exclude_set:
@@ -221,6 +213,27 @@ class FileEncodingFinder:
                 return True
         
         return False
+    
+    def is_hidden(self, path: Path) -> bool:
+        """Проверяет, является ли файл или папка скрытой"""
+        # Для Windows
+        if os.name == 'nt':
+            try:
+                # Получаем атрибуты файла
+                import ctypes
+                attrs = ctypes.windll.kernel32.GetFileAttributesW(str(path))
+                # FILE_ATTRIBUTE_HIDDEN = 0x2
+                return attrs & 0x2 != 0
+            except Exception:
+                # Если не удалось получить атрибуты, проверяем по имени
+                name = path.name
+                return name.startswith('.') or name.startswith('~')
+        
+        # Для Unix-подобных систем
+        else:
+            # Проверяем, начинается ли имя с точки
+            name = path.name
+            return name.startswith('.') or name.startswith('~')
     
     def should_include_file(self, file_path: Path, extensions: Optional[List[str]]) -> bool:
         """
@@ -258,28 +271,6 @@ class FileEncodingFinder:
         
         return False
     
-    def normalize_extensions(self, extensions: Optional[List[str]]) -> Optional[List[str]]:
-        """
-        Нормализует список расширений для внутреннего использования
-        
-        Returns:
-            Нормализованный список или None
-        """
-        if extensions is None:
-            return None
-        
-        normalized = []
-        for ext in extensions:
-            ext = ext.strip()
-            if ext == '.':
-                normalized.append('')  # Пустая строка для файлов без расширения
-            elif ext and not ext.startswith('.'):
-                normalized.append(f'.{ext.lower()}')
-            else:
-                normalized.append(ext.lower())
-        
-        return normalized
-    
     def find_files(
         self,
         root_dir: str,
@@ -289,7 +280,8 @@ class FileEncodingFinder:
         min_size: int = 0,
         max_size: Optional[int] = None,
         min_confidence: float = 0.0,
-        validate_encoding: bool = True
+        exclude_hidden: bool = False,
+        debug: bool = False
     ) -> List[FileInfo]:
         """
         Рекурсивный поиск файлов с заданными параметрами
@@ -304,7 +296,8 @@ class FileEncodingFinder:
             min_size: Минимальный размер файла в байтах
             max_size: Максимальный размер файла в байтах
             min_confidence: Минимальная уверенность в определении кодировки
-            validate_encoding: Проверять ли кодировку чтением всего файла
+            exclude_hidden: Исключать ли скрытые файлы и папки
+            debug: Включить отладочный вывод
             
         Returns:
             Список объектов FileInfo
@@ -315,9 +308,6 @@ class FileEncodingFinder:
         if not root_path.is_dir():
             raise NotADirectoryError(f"Путь не является директорией: {root_dir}")
         
-        # Нормализуем расширения для внутреннего использования
-        normalized_extensions = self.normalize_extensions(extensions)
-        
         # Нормализуем кодировки
         if encodings:
             encodings = [self.normalize_encoding(enc) for enc in encodings]
@@ -327,58 +317,128 @@ class FileEncodingFinder:
         
         found_files = []
         
+        if debug:
+            print(f"DEBUG: Начинаем поиск в {root_path}")
+            print(f"DEBUG: Расширения: {extensions}")
+            print(f"DEBUG: Кодировки: {encodings}")
+        
         # Используем os.walk для лучшего контроля над исключением директорий
         for root, dirs, files in os.walk(root_path, topdown=True):
             # Преобразуем root в Path для удобства
             current_dir = Path(root)
             
-            # Удаляем исключенные директории из списка для обхода (in-place)
-            dirs[:] = [d for d in dirs if not self.is_excluded(current_dir / d, root_path, exclude_set)]
+            if debug and len(found_files) < 10:  # Лимитируем отладочный вывод
+                print(f"DEBUG: Проверяем директорию {current_dir}")
+                print(f"DEBUG: Файлов в директории: {len(files)}")
+            
+            # Фильтруем директории и файлы
+            filtered_dirs = []
+            for d in dirs:
+                dir_path = current_dir / d
+                
+                # Проверяем исключение директорий
+                if self.is_excluded(dir_path, root_path, exclude_set):
+                    continue
+                
+                # Проверяем скрытость
+                if exclude_hidden and self.is_hidden(dir_path):
+                    continue
+                
+                filtered_dirs.append(d)
+            
+            # Обновляем список директорий для дальнейшего обхода
+            dirs[:] = filtered_dirs
             
             for file in files:
                 file_path = current_dir / file
                 
+                # Проверяем скрытость
+                if exclude_hidden and self.is_hidden(file_path):
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Пропускаем скрытый файл {file_path}")
+                    continue
+                
                 # Проверяем, не находится ли файл в исключенной директории
                 if self.is_excluded(file_path, root_path, exclude_set):
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Пропускаем файл в исключенной директории {file_path}")
                     continue
                 
                 # Проверяем расширение
-                if normalized_extensions is not None:
-                    if not self.should_include_file(file_path, normalized_extensions):
+                if extensions is not None:
+                    # Получаем расширение файла
+                    file_ext = file_path.suffix.lower()
+                    
+                    # Флаг для проверки соответствия
+                    matches_extension = False
+                    
+                    # Для каждого расширения в списке
+                    for ext in extensions:
+                        ext = ext.strip().lower()
+                        
+                        # Если указано "." или пустая строка - ищем файлы без расширения
+                        if ext == '.' or ext == '':
+                            if file_ext == '':
+                                matches_extension = True
+                                break
+                        # Если указано расширение с точкой
+                        elif ext.startswith('.'):
+                            if file_ext == ext:
+                                matches_extension = True
+                                break
+                        # Если указано расширение без точки
+                        else:
+                            if file_ext == f'.{ext}':
+                                matches_extension = True
+                                break
+                    
+                    if not matches_extension:
+                        if debug and len(found_files) < 10:
+                            print(f"DEBUG: Пропускаем файл {file_path} - не соответствует расширениям {extensions}")
                         continue
                 
                 # Проверяем размер
                 try:
                     file_size = file_path.stat().st_size
                 except (OSError, PermissionError):
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Не удалось получить размер файла {file_path}")
                     continue
                 
                 if file_size < min_size:
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Пропускаем файл {file_path} - размер {file_size} меньше минимального {min_size}")
                     continue
                 if max_size and file_size > max_size:
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Пропускаем файл {file_path} - размер {file_size} больше максимального {max_size}")
                     continue
                 
                 # Определяем кодировку
                 try:
                     result = self.detect_encoding(str(file_path), encodings)
-                except (PermissionError, OSError):
+                except (PermissionError, OSError) as e:
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Ошибка доступа к файлу {file_path}: {e}")
                     continue
                 
                 if result:
                     detected_encoding, confidence = result
                     
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Определили кодировку для {file_path}: {detected_encoding} (уверенность: {confidence:.2%})")
+                    
                     # Проверяем уверенность
                     if confidence < min_confidence:
+                        if debug and len(found_files) < 10:
+                            print(f"DEBUG: Пропускаем файл {file_path} - уверенность {confidence:.2%} меньше минимальной {min_confidence}")
                         continue
-                    
-                    # Дополнительная валидация чтением всего файла
-                    if validate_encoding and file_size < 1024 * 1024:  # до 1MB
-                        if not self.validate_encoding_by_reading(str(file_path), detected_encoding):
-                            continue
                     
                     # Если заданы конкретные кодировки, проверяем вхождение
                     if encodings:
                         if detected_encoding not in encodings:
+                            if debug and len(found_files) < 10:
+                                print(f"DEBUG: Пропускаем файл {file_path} - кодировка {detected_encoding} не в списке {encodings}")
                             continue
                     
                     # Определяем расширение для вывода
@@ -396,6 +456,14 @@ class FileEncodingFinder:
                         confidence=confidence
                     )
                     found_files.append(file_info)
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Добавили файл {file_path}")
+                else:
+                    if debug and len(found_files) < 10:
+                        print(f"DEBUG: Не удалось определить кодировку для {file_path}")
+        
+        if debug:
+            print(f"DEBUG: Всего найдено файлов: {len(found_files)}")
         
         return found_files
     
@@ -497,6 +565,8 @@ def parse_arguments():
   %(prog)s /путь/к/папке -e .  # найти файлы без расширения
   %(prog)s /путь/к/папке -e .txt .  # файлы с расширением .txt и без расширения
   %(prog)s /путь/к/папке -e txt py  # можно указывать без точки
+  %(prog)s /путь/к/папке --exclude-hidden  # исключить скрытые файлы
+  %(prog)s /путь/к/папке --debug  # включить отладочный вывод
   
 Форматы указания расширений:
   .txt    - файлы с расширением .txt
@@ -505,6 +575,7 @@ def parse_arguments():
   (пусто) - файлы без расширения (при редактировании списка)
   
 Если -e не указан, ищутся все файлы (с любыми расширениями и без них).
+По умолчанию включены скрытые файлы и папки.
         """
     )
     
@@ -516,7 +587,7 @@ def parse_arguments():
     parser.add_argument(
         '-e', '--extensions',
         nargs='+',
-        help='Расширения файлов (например: .txt .csv .json .) - точка для файлов без расширения'
+        help='Расширения файлов (например: .txt .csv .json .) - точка для файлы без расширения'
     )
     
     parser.add_argument(
@@ -598,7 +669,19 @@ def parse_arguments():
     parser.add_argument(
         '--no-validation',
         action='store_true',
-        help='Отключить проверку кодировки чтением всего файла (ускоряет работу)'
+        help='Устаревший параметр, оставлен для совместимости'
+    )
+    
+    parser.add_argument(
+        '--exclude-hidden',
+        action='store_true',
+        help='Исключить скрытые файлы и папки из поиска'
+    )
+    
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Включить отладочный вывод'
     )
     
     return parser.parse_args()
@@ -623,7 +706,7 @@ def main():
         if args.extensions:
             extensions_display = args.extensions
         
-        if args.verbose and not args.quiet:
+        if (args.verbose or args.debug) and not args.quiet:
             print(f"Поиск файлов в: {args.root_dir}")
             print(f"Расширения: {extensions_display}")
             print(f"Кодировки: {args.encodings}")
@@ -637,7 +720,8 @@ def main():
             if args.confidence > 0:
                 print(f"Минимальная уверенность: {args.confidence:.0%}")
             print(f"Размер сэмпла: {args.sample_size} байт")
-            print(f"Проверка чтением: {'нет' if args.no_validation else 'да'}")
+            print(f"Скрытые файлы: {'исключены' if args.exclude_hidden else 'включены'}")
+            print(f"Режим отладки: {'включен' if args.debug else 'выключен'}")
             print("=" * 60)
         
         # Выполняем поиск
@@ -649,7 +733,8 @@ def main():
             min_size=args.min_size,
             max_size=args.max_size,
             min_confidence=args.confidence,
-            validate_encoding=not args.no_validation
+            exclude_hidden=args.exclude_hidden,
+            debug=args.debug
         )
         
         # Выводим результаты
