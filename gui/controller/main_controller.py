@@ -7,28 +7,24 @@ from tkinter import ttk
 from typing import Optional, Dict, Any, List
 
 from gui.views.main_window_view import IMainWindowView
-from gui.views.code_editor_view import ICodeEditorView
+from gui.views.code_editor_view import CodeEditorView, ICodeEditorView
 from gui.views.project_tree_view import IProjectTreeView
 from gui.views.dialogs_view import DialogsView
-from gui.views.analysis_view import IAnalysisView
+from gui.views.analysis_view import AnalysisView, IAnalysisView  # Добавить AnalysisView
 from core.business.project_service import IProjectService
 from core.business.code_service import ICodeService
 from core.business.analysis_service import IAnalysisService
-
-from core.business.code_manager import CodeManager, CodeChange
-from core.business.change_service import ChangeManager, PendingChange
-from core.business.diff_engine import DiffEngine
-from core.business.ast_service import ASTService
-from core.business.project_creator_service import ProjectCreatorService, AISchemaParser
-from gui.utils.ui_factory import ui_factory, Tooltip
+from core.business.change_service import PendingChange
+from core.app_context import get_app_context
+from gui.utils.ui_factory import ui_factory
 
 logger = logging.getLogger('ai_code_assistant')
 
 
 class MainController:
     """
-    Основной контроллер с интеграцией фабрики UI компонентов
-    и восстановленной функциональностью из старого кода.
+    Основной контроллер с использованием единого AppContext.
+    Устраняет дублирование создания сервисов.
     """
     
     def __init__(
@@ -51,12 +47,19 @@ class MainController:
         self.code_service = code_service
         self.analysis_service = analysis_service
         
-        # Восстановленные менеджеры из старого кода
-        self.code_manager = CodeManager()
-        self.change_manager = ChangeManager()
-        self.diff_engine = DiffEngine()
-        self.ast_service = ASTService()
-        self.project_creator = ProjectCreatorService()
+        # Получаем сервисы из контекста вместо создания собственных
+        self.app_context = get_app_context()
+        
+        # Получаем необходимые сервисы
+        self.code_manager = self.app_context.get_code_manager()
+        self.change_manager = self.app_context.get_change_manager()
+        self.diff_engine = self.app_context.get_diff_engine()
+        self.ast_service = self.app_context.get_ast_service()
+        self.project_creator = self.app_context.get_project_creator()
+        self.ai_schema_service = self.app_context.get_ai_schema_service()
+        
+        # Для обратной совместимости - получаем парсер через сервис
+        from core.data.ai_schema_parser import AISchemaParser  # Локальный импорт
         self.schema_parser = AISchemaParser()
         
         # Состояние контроллера
@@ -65,17 +68,24 @@ class MainController:
         self.auto_save_on_blur = False
         self.project_ast_tree: Dict[str, Any] = {}
         
-        # Инициализация GUI с использованием фабрики
+        # Инициализация GUI
         self._setup_gui_structure()
         self._setup_event_bindings()
-        self._add_tooltips()
         
-        logger.info("MainController инициализирован с фабрикой UI компонентов")
+        logger.info("MainController инициализирован с использованием AppContext")
 
     def _setup_gui_structure(self):
         """Настраивает структуру GUI с использованием фабрики."""
         # Получаем панель контента из MainWindowView
         content_panel = self.main_window_view.get_content_panel()
+        
+        if not content_panel:
+            logger.error("Не удалось получить content_panel из MainWindowView")
+            return
+            
+        # Очищаем предыдущие виджеты если есть
+        for widget in content_panel.winfo_children():
+            widget.destroy()
         
         # Создаем главную область контента через фабрику
         content_frame = ui_factory.create_frame(content_panel)
@@ -94,21 +104,29 @@ class MainController:
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Верхняя часть правой панели - редакторы кода
-        editor_container = ui_factory.create_frame(right_panel)
-        editor_container.pack(fill=tk.BOTH, expand=True)
+        editor_container = ui_factory.create_label_frame(right_panel, text="Редактор кода", padding=5)
+        editor_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
         
         # Размещаем CodeEditorView
-        self.code_editor_view.pack(in_=editor_container, fill=tk.BOTH, expand=True)
+        if hasattr(self.code_editor_view, 'pack'):
+            self.code_editor_view.pack(in_=editor_container, fill=tk.BOTH, expand=True)
+        else:
+            # Если CodeEditorView не упакован, создаем его заново
+            self.code_editor_view = CodeEditorView(editor_container)
+            self.code_editor_view.pack(fill=tk.BOTH, expand=True)
         
-        # Нижняя часть правой панели - анализ кода (фиксированная высота)
-        analysis_container = ui_factory.create_frame(right_panel, height=200)
-        analysis_container.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=False)
-        analysis_container.pack_propagate(False)
+        # Нижняя часть правой панели - анализ кода
+        analysis_container = ui_factory.create_label_frame(right_panel, text="Анализ кода", padding=5)
+        analysis_container.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, pady=(5, 0))
         
         # Настраиваем панель анализа через фабрику
-        self.analysis_view.setup_analysis_panel(analysis_container)
+        if hasattr(self.analysis_view, 'setup_analysis_panel'):
+            self.analysis_view.setup_analysis_panel(analysis_container)
+        else:
+            # Если AnalysisView не настроен, создаем его заново
+            self.analysis_view = AnalysisView(analysis_container)
         
-        logger.debug("GUI структура настроена с использованием фабрики")
+        logger.debug("GUI структура настроена")
 
     def _setup_left_panel_components(self, left_panel):
         """Настраивает компоненты левой панели через фабрику."""
@@ -169,17 +187,6 @@ class MainController:
             )
             btn.pack(side=tk.LEFT, padx=2)
 
-    def _add_tooltips(self):
-        """Добавляет всплывающие подсказки ко всем кнопкам через фабрику."""
-        # Основные кнопки уже имеют подсказки через фабрику в представлениях
-        
-        # Добавляем подсказки к дополнительным элементам
-        additional_tooltips = {
-            # Можно добавить подсказки к другим элементам при необходимости
-        }
-        
-        logger.debug("Всплывающие подсказки добавлены")
-
     def _setup_event_bindings(self):
         """Настраивает привязки событий GUI."""
         # Проект
@@ -206,9 +213,12 @@ class MainController:
         self.main_window_view.bind_clear_ai_code(self.on_clear_ai_code)
         
         # Дерево проекта
-        self.project_tree_view.expand_all_button.config(command=self.on_expand_all)
-        self.project_tree_view.collapse_all_button.config(command=self.on_collapse_all)
-        self.project_tree_view.find_next_button.config(command=self.on_find_next)
+        if hasattr(self.project_tree_view, 'expand_all_button'):
+            self.project_tree_view.expand_all_button.config(command=self.on_expand_all)
+        if hasattr(self.project_tree_view, 'collapse_all_button'):
+            self.project_tree_view.collapse_all_button.config(command=self.on_collapse_all)
+        if hasattr(self.project_tree_view, 'find_next_button'):
+            self.project_tree_view.find_next_button.config(command=self.on_find_next)
         
         # Редактор
         self.code_editor_view.bind_on_text_modified(self.on_code_modified)
@@ -235,7 +245,7 @@ class MainController:
         self.auto_save_on_blur = self.auto_save_var.get()
         logger.info("Автосохранение: %s", "включено" if self.auto_save_on_blur else "выключено")
 
-    # --- Восстановленные методы из старого кода ---
+    # --- Восстановленные методы ---
     
     def on_show_ast_structure(self):
         """Показать структуру AST текущего файла."""
@@ -244,7 +254,7 @@ class MainController:
             return
         
         try:
-            # Используем AST сервис
+            # Используем AST сервис из контекста
             ast_node = self.ast_service.parse_module(self.current_file_path)
             if ast_node:
                 structure_info = self._format_ast_structure(ast_node)
@@ -283,12 +293,13 @@ class MainController:
             return
         
         try:
-            # Используем CodeManager для анализа конфликтов
+            # Используем CodeManager из контекста
             if not self.project_ast_tree:
                 self.project_ast_tree = self.ast_service.parse_project(
                     os.path.dirname(self.current_file_path)
                 )
             
+            from core.business.code_manager import CodeChange
             changes = self.code_manager.analyze_ai_code(
                 ai_code, 
                 self.project_ast_tree,
@@ -311,7 +322,7 @@ class MainController:
             logger.error(f"Ошибка при поиске конфликтов: {e}")
             self.main_window_view.show_error("Конфликты", f"Ошибка: {e}")
 
-    def _format_conflicts_info(self, conflicts: List[CodeChange]) -> str:
+    def _format_conflicts_info(self, conflicts) -> str:
         """Форматирует информацию о конфликтах для отображения."""
         info_lines = [f"Найдено конфликтов: {len(conflicts)}"]
         
@@ -336,7 +347,7 @@ class MainController:
             return
         
         try:
-            # Используем AST сервис для анализа
+            # Используем AST сервис из контекста
             ast_node = self.ast_service.parse_module(self.current_file_path)
             if ast_node:
                 documentation = self._generate_documentation(ast_node)
@@ -393,7 +404,7 @@ class MainController:
                 self.main_window_view.show_info("Сравнение", "Файлы идентичны")
                 return
             
-            # Используем DiffEngine для сравнения
+            # Используем DiffEngine из контекста
             diff = self.diff_engine.generate_diff(saved_content, current_content)
             
             if self.diff_engine.has_changes(diff):
@@ -418,7 +429,7 @@ class MainController:
         if result:
             path, name, template_name, is_empty, full_path = result
             
-            # Используем ProjectCreatorService для создания проекта
+            # Используем ProjectCreatorService из контекста
             if is_empty:
                 success = self.project_creator.create_basic_python_project(path, name)
             else:
@@ -444,7 +455,10 @@ class MainController:
             success = self.project_service.open_project(directory)
             if success:
                 self.main_window_view.set_status(f"Открыт проект: {directory}")
-                self._load_project_tree()
+                
+                # Загружаем дерево проекта с AST данными
+                self.project_tree_view.load_project_from_repository(self.project_service)
+                
                 self._update_ast_tree(directory)
             else:
                 self.main_window_view.show_error("Ошибка", "Не удалось открыть проект!")
@@ -459,13 +473,13 @@ class MainController:
 
     def on_create_project_structure_from_ai(self):
         """Генерация структуры проекта по AI-схеме."""
-        schema = self.code_editor_view.get_ai_content()
-        if not schema:
+        ai_code = self.code_editor_view.get_ai_content()
+        if not ai_code:
             self.main_window_view.show_warning("AI Схема", "Введите AI-схему!")
             return
         
-        # Используем AISchemaParser для парсинга схемы
-        structure = self.schema_parser.parse(schema)
+        # Используем AISchemaService из контекста
+        structure = self.ai_schema_service.parse_ai_schema(ai_code)
         if not structure:
             self.main_window_view.show_error("Ошибка", "Не удалось распарсить AI схему")
             return
@@ -511,7 +525,7 @@ class MainController:
         if self.has_unsaved_changes and self.current_file_path:
             self.on_save_current_file()
         
-        # Применить отложенные изменения через ChangeManager
+        # Применить отложенные изменения через ChangeManager из контекста
         pending_changes = self.change_manager.get_pending_changes()
         if pending_changes:
             success, messages = self.change_manager.apply_all_changes()
@@ -910,17 +924,29 @@ class MainController:
 
     def _load_project_tree(self):
         """Перечитывает структуру проекта и отображает в дереве."""
-        structure = self.project_service.repository.get_project_structure()
-        self.project_tree_view.fill_tree(structure)
+        if not self.project_service or not self.project_service.project_path:
+            self.main_window_view.show_warning("Проект", "Проект не открыт")
+            return
         
-        # Сбрасываем состояние
-        self.current_file_path = None
-        self.has_unsaved_changes = False
-        self.code_editor_view.set_source_content("")
-        self.code_editor_view.clear_ai_content()
-        self.code_editor_view.update_modified_status(False)
-        self._update_unsaved_changes_status()
-        self.main_window_view.set_status("Проект загружен")
+        try:
+            # Используем новый метод загрузки
+            self.project_tree_view.load_from_project_service(self.project_service)
+            
+            # Сбрасываем состояние
+            self.current_file_path = None
+            self.has_unsaved_changes = False
+            self.code_editor_view.set_source_content("")
+            self.code_editor_view.clear_ai_content()
+            self.code_editor_view.update_modified_status(False)
+            self._update_unsaved_changes_status()
+            self.main_window_view.set_status("Проект загружен")
+            
+            # Обновляем AST дерево для контроллера
+            self._update_ast_tree(self.project_service.project_path)
+            
+        except Exception as e:
+            logger.error(f"Ошибка при загрузке проекта: {e}")
+            self.main_window_view.show_error("Ошибка", f"Не удалось загрузить проект: {e}")
 
     def _clear_all_views(self):
         """Очищает все представления."""
@@ -950,6 +976,7 @@ class MainController:
         
         try:
             # Конвертируем PendingChange в CodeChange
+            from core.business.change_service import CodeChange
             code_changes = []
             for pending_change in pending_changes:
                 code_change = CodeChange(

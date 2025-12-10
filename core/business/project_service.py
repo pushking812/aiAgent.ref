@@ -1,8 +1,10 @@
 # core/business/project_service.py
 
 from abc import ABC, abstractmethod
-from core.business.project_creator_service import ProjectCreatorService, AISchemaParser
+from core.business.project_creator_service import ProjectCreatorService
+from core.data.ai_schema_parser import AISchemaParser
 from core.business.error_handler import handle_errors
+from core.business.project_structure_service import ProjectStructureService
 
 import logging
 logger = logging.getLogger('ai_code_assistant')
@@ -32,6 +34,7 @@ class ProjectService(IProjectService):
         self.repository = repository
         self.project_creator = ProjectCreatorService()
         self.schema_parser = AISchemaParser()
+        self.project_structure_service = ProjectStructureService(repository)
         self.project_path = None
         self.project_name = None
         self.opened = False
@@ -72,7 +75,7 @@ class ProjectService(IProjectService):
     
     @handle_errors(default_return=False)
     def save_project(self):
-        """Сохранить все изменения проекта - РЕАЛЬНАЯ РЕАЛИЗАЦИЯ."""
+        """Сохранить все изменения проекта."""
         if not self.opened or not self.project_path:
             logger.warning("Нет открытого проекта для сохранения")
             return False
@@ -133,6 +136,50 @@ class ProjectService(IProjectService):
     def _extract_project_name(self, path):
         import os
         return os.path.basename(str(path).rstrip("/\\"))
+    
+    # Новые методы для работы со структурой проекта
+    
+    @handle_errors(default_return={})
+    def get_project_structure(self):
+        """Получить полную структуру проекта с AST анализом."""
+        if not self.opened or not self.project_path:
+            logger.warning("Нет открытого проекта для получения структуры")
+            return {}
+        
+        return self.project_structure_service.get_full_project_structure(self.project_path)
+    
+    @handle_errors(default_return={})
+    def get_file_structure(self):
+        """Получить только файловую структуру проекта (быстрее)."""
+        if not self.opened or not self.project_path:
+            logger.warning("Нет открытого проекта для получения структуры")
+            return {}
+        
+        return self.project_structure_service.get_file_structure(self.project_path)
+    
+    @handle_errors(default_return={})
+    def get_ast_structure(self):
+        """Получить только AST структуру проекта."""
+        if not self.opened or not self.project_path:
+            logger.warning("Нет открытого проекта для получения AST структуры")
+            return {}
+        
+        return self.project_structure_service.get_ast_structure(self.project_path)
+    
+    @handle_errors(default_return={})
+    def get_file_with_ast(self, file_path: str):
+        """Получить информацию о файле с его AST структурой."""
+        if not self.opened or not self.project_path:
+            logger.warning("Нет открытого проекта для получения файла")
+            return {}
+        
+        return self.project_structure_service.get_file_with_ast(file_path, self.project_path)
+    
+    @handle_errors(default_return={})
+    def get_project_statistics(self):
+        """Получить статистику по проекту."""
+        structure = self.get_project_structure()
+        return structure.get('statistics', {}) if structure else {}
     
     # Свойства для доступа к состоянию
     @property

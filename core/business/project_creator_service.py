@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from .error_handler import handle_errors
+from .ai_schema_service import AISchemaService
 
 import logging
 logger = logging.getLogger('ai_code_assistant')
@@ -114,68 +115,3 @@ class ProjectCreatorService:
                 logger.warning(f"Не удалось создать файл {file_full_path}: {e}")
         
         logger.info(f"Файлов создано: {files_created}/{len(files)}")
-
-
-class AISchemaParser:
-    """Парсер схем от AI для создания структуры проекта"""
-    
-    @staticmethod
-    @handle_errors(default_return=None)
-    def parse(ai_text: str) -> Optional[Dict[str, Any]]:
-        """Парсит текстовую схему от AI в структуру проекта"""
-        logger.info(f"Парсинг AI схемы: {len(ai_text)} символов")
-        
-        try:
-            structure = {
-                'name': 'ai_generated_project',
-                'modules': [],
-                'files': {},
-                'directories': []
-            }
-            
-            # Простая реализация - в реальном коде будет полноценный парсер
-            lines = ai_text.strip().split('\n')
-            
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                if line.endswith('.py'):
-                    structure['files'][line] = AISchemaParser._get_default_file_content(line)
-                elif '/' in line or '\\' in line:
-                    structure['modules'].append(line)
-            
-            logger.info(f"Схема распарсена: {len(structure['modules'])} модулей, {len(structure['files'])} файлов")
-            return structure
-            
-        except Exception as e:
-            logger.error(f"Ошибка при парсинге AI схемы: {e}")
-            return None
-    
-    @staticmethod
-    def _get_default_file_content(filename: str) -> str:
-        """Возвращает содержимое по умолчанию для файла"""
-        if filename.endswith('.py'):
-            if filename == '__init__.py':
-                return '# Package initialization\n'
-            else:
-                module_name = filename[:-3]
-                return f'''"""
-{module_name} - описание модуля
-"""
-
-def main():
-    """Основная функция модуля"""
-    print("Модуль {module_name} запущен")
-
-
-if __name__ == "__main__":
-    main()
-'''
-        elif filename == 'README.md':
-            return '# Project\n\nDescription\n'
-        elif filename == 'requirements.txt':
-            return '# Project dependencies\n'
-        else:
-            return f'# {filename}\n'

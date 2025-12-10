@@ -2,7 +2,8 @@
 
 import ast
 import os
-from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Any  # Добавить Any
 from core.models.code_model import CodeNode
 from core.business.error_handler import handle_errors
 
@@ -11,14 +12,20 @@ logger = logging.getLogger('ai_code_assistant')
 
 
 class ASTService:
-    """Улучшенный сервис парсинга Python кода с поддержкой секционирования"""
+    """
+    Унифицированный сервис парсинга Python кода.
+    Объединяет функционал из ast_service.py и code_tree_parser.py.
+    """
     
     def __init__(self):
         self.project_tree: Dict[str, CodeNode] = {}
     
     @handle_errors(default_return={})
     def parse_project(self, directory_path: str) -> Dict[str, CodeNode]:
-        """Парсит весь проект и возвращает дерево модулей"""
+        """
+        Парсит весь проект и возвращает дерево модулей.
+        Объединяет функционал из двух исходных реализаций.
+        """
         self.project_tree = {}
         
         logger.info(f"Парсинг проекта: {directory_path}")
@@ -28,44 +35,43 @@ class ASTService:
         
         python_files_found = 0
         
-        for root, dirs, files in os.walk(directory_path):
-            # Игнорируем служебные директории
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
-            
-            for file in files:
-                if file.endswith('.py'):
-                    file_path = os.path.join(root, file)
-                    module_node = self.parse_module_with_sections(file_path)
-                    if module_node:
-                        self.project_tree[file_path] = module_node
-                        python_files_found += 1
+        # Используем Path для кроссплатформенности
+        python_files = list(Path(directory_path).rglob('*.py'))
+        
+        for file_path in python_files:
+            module_node = self.parse_module(str(file_path))
+            if module_node:
+                self.project_tree[str(file_path)] = module_node
+                python_files_found += 1
         
         logger.info(f"Парсинг завершен: {python_files_found} файлов")
         return self.project_tree
     
     @handle_errors(default_return=None)
-    def parse_module_with_sections(self, file_path: str) -> Optional[CodeNode]:
-        """Парсит модуль с разделением на секции (как в старом коде)"""
+    def parse_module(self, file_path: str) -> Optional[CodeNode]:
+        """
+        Парсит один исходный .py файл в иерархию CodeNode.
+        Объединяет лучшие практики из обеих реализаций.
+        """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                source_code = f.read()
+            source = Path(file_path).read_text(encoding='utf-8')
             
             try:
-                tree = ast.parse(source_code)
+                tree = ast.parse(source, filename=file_path)
             except SyntaxError as e:
                 logger.error(f"Синтаксическая ошибка в {file_path}: {e}")
-                return self._create_error_node(file_path, source_code, e)
+                return self._create_error_node(file_path, source, e)
             
-            module_name = os.path.basename(file_path).replace('.py', '')
+            module_name = Path(file_path).stem
+            lines = source.split('\n')
             
             # Создаем узел модуля
             module_node = CodeNode(
                 name=module_name,
                 node_type='module',
-                source_code=source_code
+                source_code=source,
+                file_path=file_path
             )
-            
-            lines = source_code.split('\n')
             
             # Обрабатываем импорты как отдельную секцию
             import_lines = self._extract_import_section(tree, lines)
@@ -73,26 +79,26 @@ class ASTService:
                 import_node = CodeNode(
                     name='imports',
                     node_type='import_section',
-                    source_code='\n'.join(import_lines)
+                    source_code='\n'.join(import_lines),
+                    file_path=file_path
                 )
                 module_node.add_child(import_node)
             
-            # Обрабатываем остальные элементы
+            # Обрабатываем классы и функции
             for item in tree.body:
                 if isinstance(item, (ast.Import, ast.ImportFrom)):
                     continue  # Импорты уже обработаны
                 
                 elif isinstance(item, ast.ClassDef):
-                    class_node = self._parse_class_with_methods(item, lines)
+                    class_node = self._parse_class(item, lines, file_path)
                     module_node.add_child(class_node)
                 
                 elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    func_node = self._parse_function(item, lines)
+                    func_node = self._parse_function(item, lines, file_path)
                     module_node.add_child(func_node)
                 
                 else:
-                    # Глобальный код (присваивания, вызовы и т.д.)
-                    # Можно добавить в отдельную секцию
+                    # Глобальный код можно добавить в отдельную секцию
                     pass
             
             # Добавляем секцию глобального кода
@@ -101,7 +107,8 @@ class ASTService:
                 global_node = CodeNode(
                     name='global_code',
                     node_type='global_section',
-                    source_code=global_code
+                    source_code=global_code,
+                    file_path=file_path
                 )
                 module_node.add_child(global_node)
             
@@ -113,6 +120,13 @@ class ASTService:
         except Exception as e:
             logger.error(f"Ошибка парсинга {file_path}: {e}")
             return None
+    
+    def parse_module_with_sections(self, file_path: str) -> Optional[CodeNode]:
+        """
+        Альтернативное имя для совместимости со старым кодом.
+        Использует новую реализацию parse_module.
+        """
+        return self.parse_module(file_path)
     
     def _extract_import_section(self, tree: ast.AST, lines: List[str]) -> List[str]:
         """Извлекает секцию импортов"""
@@ -126,43 +140,45 @@ class ASTService:
         
         return import_lines
     
-    def _parse_class_with_methods(self, class_node: ast.ClassDef, lines: List[str]) -> CodeNode:
-        """Парсит класс с методами"""
-        start = class_node.lineno - 1
-        end = getattr(class_node, 'end_lineno', start) - 1
-        class_src = '\n'.join(lines[start:end+1])
-        
-        node = CodeNode(
-            name=class_node.name,
-            node_type='class',
-            source_code=class_src
-        )
-        
-        # Добавляем методы
-        for item in class_node.body:
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                method_node = self._parse_function(item, lines)
-                node.add_child(method_node)
-        
-        return node
-    
-    def _parse_function(self, func_node: ast.AST, lines: List[str]) -> CodeNode:
+    def _parse_function(self, node: ast.AST, lines: List[str], file_path: str) -> CodeNode:
         """Парсит функцию или метод"""
-        start = func_node.lineno - 1
-        end = getattr(func_node, 'end_lineno', start) - 1
+        start = node.lineno - 1
+        end = getattr(node, 'end_lineno', start) - 1 if hasattr(node, 'end_lineno') else start
         func_src = '\n'.join(lines[start:end+1])
         
         node_type = 'function'
-        if isinstance(func_node, ast.AsyncFunctionDef):
+        if isinstance(node, ast.AsyncFunctionDef):
             node_type = 'async_function'
-        elif hasattr(func_node, '_is_method') and func_node._is_method:
-            node_type = 'method'
         
         return CodeNode(
-            name=func_node.name,
+            name=node.name,
             node_type=node_type,
-            source_code=func_src
+            ast_node=node,
+            source_code=func_src,
+            file_path=file_path
         )
+    
+    def _parse_class(self, node: ast.ClassDef, lines: List[str], file_path: str) -> CodeNode:
+        """Парсит класс с методами"""
+        start = node.lineno - 1
+        end = getattr(node, 'end_lineno', start) - 1 if hasattr(node, 'end_lineno') else start
+        class_src = '\n'.join(lines[start:end+1])
+        
+        class_node = CodeNode(
+            name=node.name,
+            node_type='class',
+            ast_node=node,
+            source_code=class_src,
+            file_path=file_path
+        )
+        
+        # Методы класса
+        for subitem in node.body:
+            if isinstance(subitem, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                method_node = self._parse_function(subitem, lines, file_path)
+                class_node.add_child(method_node)
+        
+        return class_node
     
     def _extract_global_code(self, tree: ast.AST, lines: List[str]) -> str:
         """Извлекает глобальный код (не импорты, не функции, не классы)"""
@@ -179,12 +195,13 @@ class ASTService:
     
     def _create_error_node(self, file_path: str, source_code: str, error: Exception) -> CodeNode:
         """Создает узел с информацией об ошибке"""
-        module_name = os.path.basename(file_path).replace('.py', '')
+        module_name = Path(file_path).stem
         
         error_node = CodeNode(
             name=module_name,
             node_type='module_error',
-            source_code=f"# Ошибка парсинга: {error}\n\n{source_code}"
+            source_code=f"# Ошибка парсинга: {error}\n\n{source_code}",
+            file_path=file_path
         )
         
         return error_node
@@ -224,3 +241,31 @@ class ASTService:
         except Exception as e:
             logger.error(f"Ошибка получения превью кода: {e}")
             return ""
+    
+    def get_ast_statistics(self, file_path: str) -> Dict[str, Any]:
+        """Возвращает статистику по AST файла"""
+        module_node = self.parse_module(file_path)
+        if not module_node:
+            return {}
+        
+        stats = {
+            'classes': 0,
+            'functions': 0,
+            'async_functions': 0,
+            'methods': 0,
+            'imports': 0,
+            'total_lines': len(module_node.source_code.split('\n'))
+        }
+        
+        for child in module_node.children:
+            if child.type == 'class':
+                stats['classes'] += 1
+                stats['methods'] += len(child.children)
+            elif child.type == 'function':
+                stats['functions'] += 1
+            elif child.type == 'async_function':
+                stats['async_functions'] += 1
+            elif child.type == 'import_section':
+                stats['imports'] += 1
+        
+        return stats

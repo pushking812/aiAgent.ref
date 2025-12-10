@@ -26,11 +26,16 @@ class AnalysisView(ttk.Frame, IAnalysisView):
     
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(fill=tk.BOTH, expand=True)
+        if parent:
+            self.pack(fill=tk.BOTH, expand=True)
         
         self._on_analyze_callback: Optional[Callable] = None
         self._on_report_callback: Optional[Callable] = None
         self._on_refactor_callback: Optional[Callable] = None
+        
+        # Создаем виджеты только если родитель указан
+        if parent:
+            self.setup_analysis_panel(self)
         
         logger.debug("AnalysisView инициализирован")
     

@@ -35,7 +35,8 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
     
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(fill=tk.BOTH, expand=True)
+        if parent:
+            self.pack(fill=tk.BOTH, expand=True)
         
         # Инициализация переменных
         self._last_content = ""
@@ -45,6 +46,14 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self._is_modified = False
         self._auto_save_var = None
         
+        # Создаем виджеты только если родитель указан
+        if parent:
+            self._create_widgets()
+        
+        logger.debug("CodeEditorView инициализирован")
+    
+    def _create_widgets(self):
+        """Создает все виджеты редактора."""
         # Редактор исходного кода (верхняя часть)
         source_container = ui_factory.create_frame(self)
         source_container.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
@@ -101,15 +110,13 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         
         self.ai_text = ui_factory.create_scrolled_text(ai_frame, wrap=tk.NONE, height=6)
         self.ai_text.pack(fill=tk.BOTH, expand=True)
-        
-        logger.debug("CodeEditorView инициализирован")
 
     def setup_auto_save_checkbox(self, var: tk.BooleanVar):
         """Настраивает галочку автосохранения с использованием фабрики."""
         self._auto_save_var = var
         
         # Создаем фрейм для галочки
-        auto_save_frame = ui_factory.create_frame(self.source_text.master.master.master)
+        auto_save_frame = ui_factory.create_frame(self)
         auto_save_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
         
         self.auto_save_check = ui_factory.create_checkbutton(
@@ -121,7 +128,8 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         self.auto_save_check.pack(side=tk.LEFT)
         
         # Привязываем обработку потери фокуса
-        self.source_text.bind('<FocusOut>', self._on_editor_focus_out)
+        if self.source_text:
+            self.source_text.bind('<FocusOut>', self._on_editor_focus_out)
         
         logger.debug("Галочка автосохранения настроена")
 
@@ -160,7 +168,8 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
 
     def bind_on_text_modified(self, callback):
         """Привязать обработчик к изменению исходного кода."""
-        self.source_text.bind("<KeyRelease>", self._on_text_modified)
+        if self.source_text:
+            self.source_text.bind("<KeyRelease>", self._on_text_modified)
         self._on_text_modified_callback = callback
 
     def _on_text_modified(self, event=None):
@@ -196,6 +205,8 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
 
     def get_source_content(self):
         """Получить контент исходного кода."""
+        if not hasattr(self, 'source_text') or not self.source_text:
+            return ""
         content = self.source_text.get("1.0", tk.END).rstrip("\n")
         logger.debug("Получено содержимое редактора: %s символов", len(content))
         return content
@@ -204,24 +215,36 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
         """Устанавливает содержимое редактора исходного кода."""
         logger.debug("Установка содержимого редактора: %s символов", len(text))
         
-        self.source_text.unbind('<KeyRelease>')
+        if not hasattr(self, 'source_text') or not self.source_text:
+            return
+            
+        if hasattr(self.source_text, 'unbind'):
+            self.source_text.unbind('<KeyRelease>')
+            
         self.source_text.delete("1.0", tk.END)
         self.source_text.insert("1.0", text)
         
         self._last_content = text
         logger.debug("_last_content обновлен: %s символов", len(text))
         
-        self.source_text.see("1.0")
-        self.source_text.update()
+        if hasattr(self.source_text, 'see'):
+            self.source_text.see("1.0")
+            
+        if hasattr(self.source_text, 'update'):
+            self.source_text.update()
         
         self._is_modified = False
         self.update_modified_status(False)
         
-        self.source_text.bind('<KeyRelease>', self._on_text_modified)
+        if hasattr(self.source_text, 'bind'):
+            self.source_text.bind('<KeyRelease>', self._on_text_modified)
+            
         logger.debug("Содержимое установлено успешно")
 
     def get_ai_content(self):
         """Получить AI-код (сценарий)."""
+        if not hasattr(self, 'ai_text') or not self.ai_text:
+            return ""
         content = self.ai_text.get("1.0", tk.END).rstrip("\n")
         logger.debug("Получено содержимое AI редактора: %s символов", len(content))
         return content
@@ -229,33 +252,40 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
     def set_ai_content(self, text):
         """Устанавливает AI-код (сценарий)."""
         logger.debug("Установка содержимого AI редактора: %s символов", len(text))
-        self.ai_text.delete("1.0", tk.END)
-        self.ai_text.insert("1.0", text)
-        self.ai_text.see("1.0")
-        self.ai_text.update()
+        if hasattr(self, 'ai_text') and self.ai_text:
+            self.ai_text.delete("1.0", tk.END)
+            self.ai_text.insert("1.0", text)
+            if hasattr(self.ai_text, 'see'):
+                self.ai_text.see("1.0")
+            if hasattr(self.ai_text, 'update'):
+                self.ai_text.update()
 
     def clear_ai_content(self):
         """Очищает поле AI-кода."""
-        self.ai_text.delete("1.0", tk.END)
-        logger.debug("AI редактор очищен")
+        if hasattr(self, 'ai_text') and self.ai_text:
+            self.ai_text.delete("1.0", tk.END)
+            logger.debug("AI редактор очищен")
 
     def set_source_editable(self, editable: bool):
         """Включает/выключает редактирование исходного кода."""
-        state = tk.NORMAL if editable else tk.DISABLED
-        self.source_text.config(state=state)
-        logger.debug("Редактирование исходного кода: %s", "включено" if editable else "выключено")
+        if hasattr(self, 'source_text') and self.source_text:
+            state = tk.NORMAL if editable else tk.DISABLED
+            self.source_text.config(state=state)
+            logger.debug("Редактирование исходного кода: %s", "включено" if editable else "выключено")
 
     def update_modified_status(self, modified: bool):
         """Обновляет статус изменений в интерфейсе."""
         self._is_modified = modified
-        if modified:
-            self.modified_label.config(text="[ИЗМЕНЕНО]")
-        else:
-            self.modified_label.config(text="")
+        if hasattr(self, 'modified_label'):
+            if modified:
+                self.modified_label.config(text="[ИЗМЕНЕНО]")
+            else:
+                self.modified_label.config(text="")
 
     def bind_on_ai_modified(self, callback):
         """Привязать обработчик к изменению AI-кода."""
-        self.ai_text.bind("<KeyRelease>", callback)
+        if hasattr(self, 'ai_text') and self.ai_text:
+            self.ai_text.bind("<KeyRelease>", callback)
 
     def is_modified(self) -> bool:
         """Возвращает статус изменений."""
@@ -263,8 +293,18 @@ class CodeEditorView(ttk.Frame, ICodeEditorView):
 
     def get_source_text_widget(self):
         """Возвращает виджет редактора исходного кода."""
-        return self.source_text
+        if hasattr(self, 'source_text'):
+            return self.source_text
+        return None
 
     def get_ai_text_widget(self):
         """Возвращает виджет редактора AI-кода."""
-        return self.ai_text
+        if hasattr(self, 'ai_text'):
+            return self.ai_text
+        return None
+    
+    def pack(self, **kwargs):
+        """Упаковывает виджет и создает внутренние виджеты."""
+        super().pack(**kwargs)
+        if not hasattr(self, 'source_text'):
+            self._create_widgets()
