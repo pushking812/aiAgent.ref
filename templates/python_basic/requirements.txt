@@ -1,0 +1,9 @@
+# templates/requirements.txt
+
+# Project dependencies
+# Добавьте зависимости вашего проекта здесь
+
+# Примеры:
+# requests>=2.28.0
+# flask>=2.0.0
+# numpy>=1.21.0

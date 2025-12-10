@@ -128,7 +128,12 @@ class ProjectRepository(IProjectRepository):
             
             # Создаем файлы
             for file_path, content in structure.get('files', {}).items():
-                file_full_path = base_dir / file_path
+                # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: создаем абсолютный путь
+                if not Path(file_path).is_absolute():
+                    file_full_path = base_dir / file_path
+                else:
+                    file_full_path = Path(file_path)
+                    
                 self.file_provider.create_directory(str(file_full_path.parent))
                 self.file_provider.write_file(str(file_full_path), content)
             
@@ -177,6 +182,10 @@ class ProjectRepository(IProjectRepository):
     def replace_code_in_file(self, file_path: str, node_name: str, new_code: str) -> bool:
         """Заменяет код в файле."""
         try:
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: получаем абсолютный путь
+            if not Path(file_path).is_absolute() and self.project_path:
+                file_path = str(self.project_path / file_path)
+            
             content = self.file_provider.read_file(file_path)
             if content is None:
                 content = ""
@@ -244,10 +253,10 @@ class ProjectRepository(IProjectRepository):
                     
                     # Читаем содержимое файла
                     try:
-                        content = self.file_provider.read_file(str(item))
+                        content = self.file_provider.read_file(str(item))  # Абсолютный путь
                         if content is not None:
                             structure['files'][rel_path] = {
-                                'path': str(item),
+                                'path': str(item),  # Абсолютный путь
                                 'module': module_name,
                                 'name': item.name,
                                 'content': content
@@ -279,6 +288,11 @@ class ProjectRepository(IProjectRepository):
     
     def read_file(self, file_path: str) -> str:
         """Читает содержимое файла."""
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: если путь относительный, делаем его абсолютным относительно проекта
+        path = Path(file_path)
+        if not path.is_absolute() and self.project_path:
+            file_path = str(self.project_path / file_path)
+        
         content = self.file_provider.read_file(file_path)
         if content is None:
             return ""
@@ -286,12 +300,22 @@ class ProjectRepository(IProjectRepository):
     
     def write_file(self, file_path: str, content: str) -> bool:
         """Записывает содержимое в файл."""
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: если путь относительный, делаем его абсолютным относительно проекта
+        path = Path(file_path)
+        if not path.is_absolute() and self.project_path:
+            file_path = str(self.project_path / file_path)
+        
         return self.file_provider.write_file(file_path, content)
     
     # Дополнительные методы для удобства
     
     def set_current_file(self, file_path: str):
         """Устанавливает текущий файл."""
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: если путь относительный, делаем его абсолютным
+        path = Path(file_path)
+        if not path.is_absolute() and self.project_path:
+            file_path = str(self.project_path / file_path)
+        
         self.current_file_path = file_path
         logger.debug(f"Текущий файл установлен: {file_path}")
     
@@ -319,7 +343,14 @@ class ProjectRepository(IProjectRepository):
                 files_info[rel_path] = {
                     'size': self.file_provider.get_file_size(str(item)),
                     'extension': item.suffix,
-                    'path': str(item)
+                    'path': str(item)  # Абсолютный путь
                 }
         
         return files_info
+    
+    def get_absolute_path(self, relative_path: str) -> str:
+        """Возвращает абсолютный путь для относительного пути."""
+        if not self.project_path:
+            return relative_path
+        
+        return str(self.project_path / relative_path)

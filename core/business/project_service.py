@@ -2,9 +2,10 @@
 
 from abc import ABC, abstractmethod
 from core.business.project_creator_service import ProjectCreatorService
-from core.data.ai_schema_parser import AISchemaParser
+from core.business.ai_schema_service import AISchemaService  # ← ИСПРАВЛЕНО!
 from core.business.error_handler import handle_errors
 from core.business.project_structure_service import ProjectStructureService
+from core.data.project_repository import ProjectRepository  # ← ДОБАВЛЕНО!
 
 import logging
 logger = logging.getLogger('ai_code_assistant')
@@ -30,14 +31,15 @@ class IProjectService(ABC):
 class ProjectService(IProjectService):
     """Сервис управления проектом с реальной реализацией."""
     
-    def __init__(self, repository):
-        self.repository = repository
+    def __init__(self, repository=None):  # ← ДОБАВЛЕН ПАРАМЕТР ПО УМОЛЧАНИЮ
+        self.repository = repository or ProjectRepository()  # ← СОЗДАЕМ ПО УМОЛЧАНИЮ
         self.project_creator = ProjectCreatorService()
-        self.schema_parser = AISchemaParser()
-        self.project_structure_service = ProjectStructureService(repository)
+        self.schema_parser = AISchemaService()  # ← ИСПРАВЛЕНО!
+        self.project_structure_service = ProjectStructureService(self.repository)
         self.project_path = None
         self.project_name = None
         self.opened = False
+        logger.debug("ProjectService инициализирован")
     
     @handle_errors(default_return=False)
     def create_project(self, path, name):

@@ -30,6 +30,7 @@ class IProjectTreeView:
     def setup_tree_buttons(self, parent): pass
     def load_project_structure(self, directory: str): pass
     def get_tree_widget(self) -> ttk.Treeview: pass
+    def get_selected_element_code(self) -> str: pass  # НОВЫЙ МЕТОД
 
 
 class ProjectTreeView(ttk.Frame, IProjectTreeView):
@@ -258,9 +259,12 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             self._fill_tree_from_structure(project_structure)
             return
 
-        modules = project_structure.get("modules", [])
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: используем ast_tree из структуры если он есть
+        ast_tree = project_structure.get('ast_tree', self.project_tree)
+        self.project_tree = ast_tree
+        
+        # Получаем файлы из структуры
         files = project_structure.get("files", {})
-        directories = project_structure.get("directories", [])
         
         # Создаем корневой элемент для проекта
         project_name = os.path.basename(project_path) if project_path else "Проект"
@@ -275,30 +279,38 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
 
         # Группируем файлы по директориям
         dir_structure = {}
-        for file_path, file_content in files.items():
-            dir_path = os.path.dirname(file_path)
-            if dir_path not in dir_structure:
-                dir_structure[dir_path] = []
-            dir_structure[dir_path].append((file_path, file_content))
+        for file_rel_path, file_info in files.items():
+            if isinstance(file_info, dict):
+                dir_path = os.path.dirname(file_rel_path)
+                if dir_path not in dir_structure:
+                    dir_structure[dir_path] = []
+                dir_structure[dir_path].append((file_rel_path, file_info))
+            else:
+                # Простая структура
+                dir_path = os.path.dirname(file_rel_path)
+                if dir_path not in dir_structure:
+                    dir_structure[dir_path] = []
+                dir_structure[dir_path].append((file_rel_path, file_info))
 
-        # Добавляем директории и их содержимое
+        # Добавляем директории из структуры проекта
+        directories = project_structure.get('directories', [])
         for directory in sorted(directories):
             dir_id = self._add_directory(project_root, directory)
             
             # Добавляем файлы этой директории
             if directory in dir_structure:
-                for file_path, file_content in dir_structure[directory]:
-                    self._add_file_with_code_structure(dir_id, file_path)
+                for file_rel_path, file_info in dir_structure[directory]:
+                    self._add_file_with_code_structure(dir_id, file_rel_path, file_info)
 
         # Добавляем файлы из корневой директории
         if '' in dir_structure:
-            for file_path, file_content in dir_structure['']:
-                self._add_file_with_code_structure(project_root, file_path)
+            for file_rel_path, file_info in dir_structure['']:
+                self._add_file_with_code_structure(project_root, file_rel_path, file_info)
 
         # Проверяем файлы с ошибками
         error_files = []
-        for file_path, node in self.project_tree.items():
-            if node.type == 'module_error':
+        for file_path, node in ast_tree.items():
+            if node and node.type == 'module_error':
                 error_files.append(os.path.basename(file_path))
                 logger.warning(f"Файл с синтаксической ошибкой: {file_path}")
 
@@ -411,18 +423,25 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         self.all_tree_items.append(dir_id)
         return dir_id
 
-    def _add_file_with_code_structure(self, parent_id, file_path):
+    def _add_file_with_code_structure(self, parent_id, file_rel_path, file_info):
         """Добавляет файл с его структурой кода в дерево."""
-        file_name = os.path.basename(file_path)
+        if isinstance(file_info, dict):
+            file_path = file_info.get('path', '')
+            file_name = file_info.get('name', os.path.basename(file_rel_path))
+            ast_node = file_info.get('ast_node')
+        else:
+            file_path = file_rel_path
+            file_name = os.path.basename(file_rel_path)
+            ast_node = None
         
-        # Проверяем, есть ли этот файл в AST дереве
-        module_node = None
-        for project_file_path, node in self.project_tree.items():
-            if os.path.normpath(project_file_path) == os.path.normpath(file_path):
-                module_node = node
-                break
+        # Ищем AST узел если не передан
+        if not ast_node:
+            for project_file_path, node in self.project_tree.items():
+                if os.path.normpath(project_file_path) == os.path.normpath(file_path):
+                    ast_node = node
+                    break
         
-        if module_node and module_node.type == 'module_error':
+        if ast_node and ast_node.type == 'module_error':
             # Файл с ошибкой синтаксиса
             file_id = self.tree.insert(
                 parent_id, 
@@ -436,7 +455,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                 "path": file_path,
                 "full_path": file_path,
                 "display_name": f"❌ {file_name}",
-                "node": module_node
+                "node": ast_node
             }
             
             # Добавляем информацию об ошибке
@@ -448,7 +467,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             )
             self.all_tree_items.append(error_id)
             
-        elif module_node:
+        elif ast_node:
             # Файл с правильным синтаксисом
             file_id = self.tree.insert(
                 parent_id, 
@@ -463,12 +482,12 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
                 "path": file_path,
                 "full_path": file_path,
                 "display_name": f"📄 {file_name}",
-                "node": module_node
+                "node": ast_node
             }
             self.all_tree_items.append(file_id)
             
-            # Добавляем структуру кода
-            self._add_code_structure_to_file(file_id, module_node)
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: добавляем структуру кода
+            self._add_code_structure_to_file(file_id, ast_node)
         else:
             # Файл не найден в AST дереве (возможно, не Python файл)
             file_id = self.tree.insert(
@@ -491,16 +510,28 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
     def _add_code_structure_to_file(self, file_id, module_node):
         """Добавляет структуру кода к файлу в дереве."""
         if not module_node or not hasattr(module_node, 'children'):
+            logger.debug(f"У модуля {module_node.name} нет children")
             return
         
-        # Добавляем элементы кода из модуля
+        logger.info(f"Добавление структуры кода для файла: {module_node.name}, детей: {len(module_node.children)}")
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: добавляем ВСЕ дочерние элементы
         for child_node in module_node.children:
-            if child_node.type not in ['method']:  # Методы только внутри классов
-                self._add_code_node_to_tree(file_id, child_node)
+            logger.debug(f"  Добавление узла: {child_node.name}, тип: {child_node.type}")
+            self._add_code_node_to_tree(file_id, child_node)
 
     def _add_code_node_to_tree(self, parent_id, code_node):
         """Рекурсивно добавляет узел кода в дерево."""
+        if not code_node:
+            return
+        
+        # Убедимся, что есть children
+        if not hasattr(code_node, 'children'):
+            code_node.children = []
+        
         display_name, node_type = self._get_display_info(code_node)
+        
+        logger.debug(f"    Создание элемента дерева: {display_name}, тип: {node_type}")
         
         element_id = self.tree.insert(
             parent_id, 
@@ -518,15 +549,28 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         }
         self.all_tree_items.append(element_id)
         
-        # Для классов добавляем методы
-        if code_node.type == 'class' and hasattr(code_node, 'children'):
-            for child in code_node.children:
-                if child.type == 'method':
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: для ВСЕХ узлов добавляем дочерние элементы
+        if hasattr(code_node, 'children') and code_node.children:
+            logger.debug(f"    У узла {code_node.name} есть {len(code_node.children)} детей")
+            
+            # Для классов добавляем методы
+            if node_type == 'class':
+                for child in code_node.children:
+                    if child.type in ['method', 'async_method']:
+                        self._add_code_node_to_tree(element_id, child)
+                    else:
+                        # Другие элементы класса (вложенные классы, функции)
+                        self._add_code_node_to_tree(element_id, child)
+            
+            # Для import_section и global_section добавляем все дочерние элементы
+            elif node_type in ['import_section', 'global_section']:
+                for child in code_node.children:
                     self._add_code_node_to_tree(element_id, child)
-        # Для других узлов (кроме методов) добавляем дочерние элементы
-        elif hasattr(code_node, 'children') and code_node.type != 'method':
-            for child in code_node.children:
-                if child.type != 'method':  # Методы только внутри классов
+            
+            # Для функций и методов не добавляем дочерние элементы (у них обычно нет)
+            elif node_type not in ['function', 'async_function', 'method', 'async_method']:
+                # Для других типов добавляем всех детей
+                for child in code_node.children:
                     self._add_code_node_to_tree(element_id, child)
 
     def _get_display_info(self, code_node: CodeNode) -> tuple:
@@ -555,11 +599,18 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         elif node_type == 'method':
             return f"📋 {code_node.name}()", 'method'
         
+        elif node_type == 'async_method':
+            return f"⚡ {code_node.name}()", 'async_method'
+        
         elif node_type == 'module_error':
             return f"❌ {code_node.name}", 'module_error'
         
+        elif node_type == 'module':
+            return f"📦 {code_node.name}", 'module'
+        
         else:
-            return f"❓ {code_node.name}", node_type
+            logger.warning(f"Неизвестный тип узла: {node_type}, имя: {code_node.name}")
+            return f"❓ {code_node.name} ({node_type})", node_type
 
     def get_selected_item(self) -> Dict:
         """Возвращает выбранный элемент."""
@@ -580,6 +631,63 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             item_data['clean_name'] = clean_name
             
         return item_data
+        
+    def get_selected_element_code(self) -> str:
+        """
+        Возвращает исходный код выбранного элемента.
+        
+        Returns:
+            str: Исходный код элемента или пустая строка если не найден
+        """
+        selected_item = self.get_selected_item()
+        if not selected_item:
+            return ""
+        
+        # Получаем узел кода
+        code_node = selected_item.get('node')
+        if not code_node:
+            logger.debug("Выбранный элемент не содержит узла кода")
+            return ""
+        
+        # Извлекаем исходный код
+        source_code = self._extract_element_source_code(code_node, selected_item)
+        
+        logger.debug(f"Получен код элемента: {selected_item.get('name')}, "
+                    f"тип: {selected_item.get('type')}, длина: {len(source_code)}")
+        
+        return source_code
+        
+    def _extract_element_source_code(self, code_node: CodeNode, item_data: Dict) -> str:
+        """Извлекает исходный код для элемента."""
+        if not code_node:
+            return ""
+        
+        # Для файлов показываем весь код
+        if item_data.get('type') == 'file':
+            return code_node.source_code if hasattr(code_node, 'source_code') else ""
+        
+        # Для элементов кода (функций, классов, методов) показываем их код
+        if hasattr(code_node, 'source_code') and code_node.source_code:
+            return code_node.source_code
+        
+        # Пытаемся получить код из AST узла
+        if hasattr(code_node, 'ast_node') and code_node.ast_node:
+            try:
+                import ast
+                return ast.unparse(code_node.ast_node) if hasattr(ast, 'unparse') else str(code_node.ast_node)
+            except Exception as e:
+                logger.debug(f"Не удалось распарсить AST узел: {e}")
+        
+        # Для секций (импорты, глобальный код)
+        if item_data.get('type') in ['import_section', 'global_section']:
+            return code_node.source_code if hasattr(code_node, 'source_code') else ""
+        
+        # Для директорий и проектов возвращаем пустую строку
+        if item_data.get('type') in ['directory', 'project']:
+            return ""
+        
+        # По умолчанию возвращаем имя элемента
+        return f"# {item_data.get('name', '')}\n# Тип: {item_data.get('type', 'unknown')}"
 
     def highlight_search_results(self, items: List[str]):
         """Подсвечивает результаты поиска."""
@@ -697,10 +805,25 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
 
     def _clean_search_text(self, text: str) -> str:
         """Очищает текст для поиска от эмодзи и специальных символов."""
-        cleaned = re.sub(r'[🔹📦📝⚡🏛️📋❓📁📄()]', '', text)
+        # Регулярное выражение для удаления эмодзи
+        emoji_pattern = re.compile(
+            "["u"\U0001F600-\U0001F64F"  # смайлики
+            u"\U0001F300-\U0001F5FF"  # символы и пиктограммы
+            u"\U0001F680-\U0001F6FF"  # транспорт и карты
+            u"\U0001F1E0-\U0001F1FF"  # флаги
+            "]+", flags=re.UNICODE
+        )
+        
+        # Удаляем эмодзи
+        text_no_emoji = emoji_pattern.sub('', text)
+        
+        # Удаляем технические символы
+        cleaned = re.sub(r'[🔹📦📝⚡🏛️📋❓📁📄()\[\]]', '', text_no_emoji)
+        
+        # Убираем лишние пробелы
         cleaned = re.sub(r'\s+', ' ', cleaned)
-        cleaned = cleaned.strip()
-        return cleaned.lower()
+        
+        return cleaned.strip().lower()
 
     def _matches_dot_notation(self, text: str, search_parts: List[str]) -> bool:
         """Проверяет соответствие точечной нотации."""
@@ -796,6 +919,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
         if not self.tree:
             self._setup_ui()
             
+
     def load_project_from_repository(self, project_service):
         """Загружает проект из сервиса проекта с AST данными."""
         if not project_service or not project_service.project_path:
@@ -891,7 +1015,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             # Проверяем файлы с ошибками
             error_files = []
             for file_path, ast_node in self.project_tree.items():
-                if ast_node.type == 'module_error':
+                if ast_node and ast_node.type == 'module_error':
                     error_files.append(os.path.basename(file_path))
             
             # Раскрываем корневой элемент
@@ -966,7 +1090,7 @@ class ProjectTreeView(ttk.Frame, IProjectTreeView):
             }
             self.all_tree_items.append(file_id)
             
-            # Добавляем структуру кода
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: добавляем структуру кода
             self._add_code_structure_to_file(file_id, ast_node)
         else:
             # Файл без AST (возможно, не Python файл)

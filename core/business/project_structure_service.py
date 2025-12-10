@@ -8,7 +8,8 @@
 import os
 import logging
 from typing import Dict, Any
-from core.data.project_repository import ProjectRepository
+from pathlib import Path
+from core.data.project_repository import ProjectRepository, IProjectRepository
 from core.business.ast_service import ASTService
 from core.business.error_handler import handle_errors
 
@@ -18,7 +19,7 @@ logger = logging.getLogger('ai_code_assistant')
 class ProjectStructureService:
     """Сервис для получения полной структуры проекта."""
     
-    def __init__(self, project_repository: ProjectRepository = None, ast_service: ASTService = None):
+    def __init__(self, project_repository: IProjectRepository = None, ast_service: ASTService = None):
         self.project_repository = project_repository or ProjectRepository()
         self.ast_service = ast_service or ASTService()
         logger.debug("Инициализирован ProjectStructureService")
@@ -56,7 +57,7 @@ class ProjectStructureService:
             file_structure['ast_tree'] = ast_tree
             
             # Обогащаем файлы AST данными
-            self._enrich_files_with_ast(file_structure, ast_tree)
+            self._enrich_files_with_ast(file_structure, ast_tree, project_path)
             
             # Добавляем статистику
             file_structure['statistics'] = self._calculate_statistics(file_structure, ast_tree)
@@ -72,42 +73,45 @@ class ProjectStructureService:
             # Возвращаем хотя бы файловую структуру
             return file_structure
     
-    def _enrich_files_with_ast(self, file_structure: Dict[str, Any], ast_tree: Dict[str, Any]):
+    def _enrich_files_with_ast(self, file_structure: Dict[str, Any], ast_tree: Dict[str, Any], project_path: str):
         """Обогащает информацию о файлах AST данными."""
         files = file_structure.get('files', {})
         
-        for file_path, ast_node in ast_tree.items():
-            # Получаем относительный путь
-            rel_path = os.path.relpath(file_path, file_structure['project_path'])
-            
-            if rel_path in files:
-                if isinstance(files[rel_path], dict):
-                    files[rel_path]['ast_node'] = ast_node
-                else:
-                    # Если файл хранится как строка, преобразуем в словарь
-                    files[rel_path] = {
-                        'content': files[rel_path],
-                        'ast_node': ast_node,
-                        'path': file_path,
-                        'module': files[rel_path].get('module', '') if isinstance(files[rel_path], dict) else ''
-                    }
-            else:
-                # Файл есть в AST, но нет в базовой структуре
-                # Может быть скрытый или новый файл
-                module_path = os.path.dirname(rel_path)
-                module_name = module_path.replace(os.sep, '.') if module_path != '.' else ''
+        for ast_file_path, ast_node in ast_tree.items():
+            try:
+                # Получаем относительный путь от корня проекта
+                ast_path = Path(ast_file_path)
+                project_root = Path(project_path)
                 
-                files[rel_path] = {
-                    'content': ast_node.source_code if hasattr(ast_node, 'source_code') else '',
-                    'ast_node': ast_node,
-                    'path': file_path,
-                    'module': module_name,
-                    'name': os.path.basename(file_path)
-                }
+                # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: правильно вычисляем относительный путь
+                try:
+                    rel_path = str(ast_path.relative_to(project_root))
+                except ValueError:
+                    # Если пути не находятся в одном дереве, пытаемся найти по имени
+                    logger.warning(f"Не удалось получить относительный путь: {ast_file_path}")
+                    # Ищем файл по имени в структуре
+                    file_name = ast_path.name
+                    for existing_rel_path, file_info in files.items():
+                        if isinstance(file_info, dict) and file_info.get('name') == file_name:
+                            rel_path = existing_rel_path
+                            break
+                    else:
+                        continue  # Файл не найден в структуре
                 
-                # Добавляем модуль если нужно
-                if module_name and module_name not in file_structure.get('modules', []):
-                    file_structure.setdefault('modules', []).append(module_name)
+                if rel_path in files:
+                    # Обновляем существующий файл
+                    if isinstance(files[rel_path], dict):
+                        files[rel_path]['ast_node'] = ast_node
+                    else:
+                        files[rel_path] = {
+                            'content': files[rel_path],
+                            'ast_node': ast_node,
+                            'path': ast_file_path,  # Абсолютный путь
+                            'module': self._get_module_name(ast_file_path, project_path)
+                        }
+            except Exception as e:
+                logger.warning(f"Ошибка обогащения файла {ast_file_path}: {e}")
+                continue
     
     def _calculate_statistics(self, file_structure: Dict[str, Any], ast_tree: Dict[str, Any]) -> Dict[str, Any]:
         """Вычисляет статистику по проекту."""
@@ -169,7 +173,11 @@ class ProjectStructureService:
         Возвращает информацию о файле с его AST структурой.
         """
         try:
-            # Получаем содержимое файла
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: получаем абсолютный путь
+            if not Path(file_path).is_absolute() and project_path:
+                file_path = str(Path(project_path) / file_path)
+            
+            # Получаем содержимое файла через репозиторий
             content = self.project_repository.read_file(file_path)
             
             # Парсим AST
@@ -188,9 +196,12 @@ class ProjectStructureService:
     
     def _get_module_name(self, file_path: str, project_path: str = None) -> str:
         """Возвращает имя модуля для файла."""
-        if project_path and file_path.startswith(project_path):
-            rel_path = os.path.relpath(os.path.dirname(file_path), project_path)
-            if rel_path == '.':
+        if project_path and file_path.startswith(str(project_path)):
+            try:
+                rel_path = Path(file_path).parent.relative_to(project_path)
+                if str(rel_path) == '.':
+                    return ''
+                return str(rel_path).replace(os.sep, '.')
+            except ValueError:
                 return ''
-            return rel_path.replace(os.sep, '.')
         return ''

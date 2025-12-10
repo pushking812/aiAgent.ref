@@ -1,0 +1,9 @@
+// templates/main.py
+
+{
+    "name": "python_basic",
+    "description": "Базовая структура Python проекта",
+    "version": "1.0.0",
+    "author": "AI Code Assistant",
+    "type": "python"
+}

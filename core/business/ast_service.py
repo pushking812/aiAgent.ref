@@ -3,7 +3,7 @@
 import ast
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any  # Добавить Any
+from typing import Dict, List, Optional, Tuple, Any
 from core.models.code_model import CodeNode
 from core.business.error_handler import handle_errors
 
@@ -65,12 +65,13 @@ class ASTService:
             module_name = Path(file_path).stem
             lines = source.split('\n')
             
-            # Создаем узел модуля
+            # Создаем узел модуля с ИНИЦИАЛИЗИРОВАННЫМИ children
             module_node = CodeNode(
                 name=module_name,
-                node_type='module',
+                node_type='module',  # Используем node_type как ожидает CodeNode
                 source_code=source,
-                file_path=file_path
+                file_path=file_path,
+                children=[]  # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: инициализируем children
             )
             
             # Обрабатываем импорты как отдельную секцию
@@ -80,7 +81,8 @@ class ASTService:
                     name='imports',
                     node_type='import_section',
                     source_code='\n'.join(import_lines),
-                    file_path=file_path
+                    file_path=file_path,
+                    children=[]  # Инициализируем children
                 )
                 module_node.add_child(import_node)
             
@@ -94,7 +96,7 @@ class ASTService:
                     module_node.add_child(class_node)
                 
                 elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    func_node = self._parse_function(item, lines, file_path)
+                    func_node = self._parse_function(item, lines, file_path, is_method=False)
                     module_node.add_child(func_node)
                 
                 else:
@@ -108,7 +110,8 @@ class ASTService:
                     name='global_code',
                     node_type='global_section',
                     source_code=global_code,
-                    file_path=file_path
+                    file_path=file_path,
+                    children=[]  # Инициализируем children
                 )
                 module_node.add_child(global_node)
             
@@ -140,22 +143,26 @@ class ASTService:
         
         return import_lines
     
-    def _parse_function(self, node: ast.AST, lines: List[str], file_path: str) -> CodeNode:
+    def _parse_function(self, node: ast.AST, lines: List[str], file_path: str, 
+                       is_method: bool = False) -> CodeNode:
         """Парсит функцию или метод"""
         start = node.lineno - 1
         end = getattr(node, 'end_lineno', start) - 1 if hasattr(node, 'end_lineno') else start
         func_src = '\n'.join(lines[start:end+1])
         
-        node_type = 'function'
+        # Определяем тип с учетом async и method
         if isinstance(node, ast.AsyncFunctionDef):
-            node_type = 'async_function'
+            node_type = 'async_method' if is_method else 'async_function'
+        else:
+            node_type = 'method' if is_method else 'function'
         
         return CodeNode(
             name=node.name,
             node_type=node_type,
             ast_node=node,
             source_code=func_src,
-            file_path=file_path
+            file_path=file_path,
+            children=[]  # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: инициализируем children
         )
     
     def _parse_class(self, node: ast.ClassDef, lines: List[str], file_path: str) -> CodeNode:
@@ -169,13 +176,14 @@ class ASTService:
             node_type='class',
             ast_node=node,
             source_code=class_src,
-            file_path=file_path
+            file_path=file_path,
+            children=[]  # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: инициализируем children
         )
         
         # Методы класса
         for subitem in node.body:
             if isinstance(subitem, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                method_node = self._parse_function(subitem, lines, file_path)
+                method_node = self._parse_function(subitem, lines, file_path, is_method=True)
                 class_node.add_child(method_node)
         
         return class_node
@@ -201,7 +209,8 @@ class ASTService:
             name=module_name,
             node_type='module_error',
             source_code=f"# Ошибка парсинга: {error}\n\n{source_code}",
-            file_path=file_path
+            file_path=file_path,
+            children=[]  # Инициализируем children
         )
         
         return error_node
@@ -217,6 +226,7 @@ class ASTService:
     def _find_element_recursive(self, node: CodeNode, target_name: str, 
                                target_type: str) -> Optional[CodeNode]:
         """Рекурсивно ищет элемент в дереве"""
+        # Используем node.type (а не node.node_type) для совместимости с CodeNode
         if node.name == target_name and node.type == target_type:
             return node
         
@@ -253,19 +263,24 @@ class ASTService:
             'functions': 0,
             'async_functions': 0,
             'methods': 0,
+            'async_methods': 0,
             'imports': 0,
             'total_lines': len(module_node.source_code.split('\n'))
         }
         
         for child in module_node.children:
-            if child.type == 'class':
+            if child.type == 'class':  # Используем type для совместимости
                 stats['classes'] += 1
-                stats['methods'] += len(child.children)
-            elif child.type == 'function':
+                for method in child.children:
+                    if method.type == 'method':  # Используем type
+                        stats['methods'] += 1
+                    elif method.type == 'async_method':  # Используем type
+                        stats['async_methods'] += 1
+            elif child.type == 'function':  # Используем type
                 stats['functions'] += 1
-            elif child.type == 'async_function':
+            elif child.type == 'async_function':  # Используем type
                 stats['async_functions'] += 1
-            elif child.type == 'import_section':
+            elif child.type == 'import_section':  # Используем type
                 stats['imports'] += 1
         
         return stats
