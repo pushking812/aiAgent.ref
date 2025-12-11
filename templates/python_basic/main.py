@@ -1,4 +1,4 @@
-# templates/main.py
+# templates/python_basic/main.py
 
 """
 {project_name} - Основной модуль приложения

@@ -1,4 +1,4 @@
-# templates/requirements.txt
+# templates/python_basic/requirements.txt
 
 # Project dependencies
 # Добавьте зависимости вашего проекта здесь

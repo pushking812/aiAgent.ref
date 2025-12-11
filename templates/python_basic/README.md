@@ -1,4 +1,4 @@
-# templates/README.md
+# templates/python_basic/README.md
 
 # {project_name}
 

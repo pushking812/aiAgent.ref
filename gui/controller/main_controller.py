@@ -58,6 +58,7 @@ class MainController:
         self.project_creator = self.app_context.get_project_creator()
         self.ai_schema_service = self.app_context.get_ai_schema_service()
         
+        
         # Для обратной совместимости - получаем парсер через сервис
         from core.data.ai_schema_parser import AISchemaParser  # Локальный импорт
         self.schema_parser = AISchemaParser()
@@ -226,7 +227,7 @@ class MainController:
         self.code_editor_view.bind_on_ai_modified(self.on_ai_modified)
         
         # Дерево проекта
-        self.project_tree_view.set_on_tree_select_callback(self.on_tree_item_selected)
+        self.project_tree_view.set_on_tree_select_callback(self.on_tree_item_selected_with_code_display)
         
         # Анализ
         self.analysis_view.bind_analyze_code(self.on_analyze_code)
@@ -821,8 +822,117 @@ class MainController:
 
     # --- Обработчики событий дерева ---
     
+    def on_tree_item_selected_with_code_display(self):
+        """Обработка выбора элемента дерева проекта с отображением кода элемента."""
+        # Вызываем существующий обработчик
+        self.on_tree_item_selected()
+        
+        # ДОПОЛНИТЕЛЬНО: Получаем и отображаем код элемента
+        self._display_selected_element_code()
+    
+    def _display_selected_element_code(self):
+        """Отображает код выбранного элемента в редакторе кода."""
+        try:
+            # Проверяем, есть ли метод получения кода элемента в ProjectTreeView
+            if hasattr(self.project_tree_view, 'get_selected_element_code'):
+                code = self.project_tree_view.get_selected_element_code()
+                
+                if code:
+                    # Отображаем код элемента в редакторе исходного кода
+                    self.code_editor_view.set_source_content(code)
+                    
+                    # Получаем информацию о выбранном элементе для статуса
+                    selected_item = self.project_tree_view.get_selected_item()
+                    if selected_item:
+                        item_type = selected_item.get("type", "unknown")
+                        item_name = selected_item.get("clean_name", selected_item.get("name", "unknown"))
+                        
+                        # Обновляем статус
+                        if item_type == "file":
+                            self.main_window_view.set_status(f"Показан файл: {item_name}")
+                        elif item_type == "class":
+                            self.main_window_view.set_status(f"Показан класс: {item_name}")
+                        elif item_type in ["function", "async_function"]:
+                            self.main_window_view.set_status(f"Показана функция: {item_name}")
+                        elif item_type in ["method", "async_method"]:
+                            self.main_window_view.set_status(f"Показан метод: {item_name}")
+                        elif item_type == "import_section":
+                            self.main_window_view.set_status(f"Показаны импорты")
+                        elif item_type == "global_section":
+                            self.main_window_view.set_status(f"Показан глобальный код")
+                        else:
+                            self.main_window_view.set_status(f"Показан элемент: {item_name}")
+                    
+                    # Сбрасываем флаг изменений для этого элемента
+                    self.has_unsaved_changes = False
+                    self.code_editor_view.update_modified_status(False)
+                    self._update_unsaved_changes_status()
+                    
+                    logger.debug(f"Отображен код элемента: {len(code)} символов")
+                else:
+                    # Если код пустой, очищаем редактор
+                    selected_item = self.project_tree_view.get_selected_item()
+                    if selected_item:
+                        item_type = selected_item.get("type", "unknown")
+                        
+                        # Для директорий и проектов показываем информационное сообщение
+                        if item_type in ["directory", "project"]:
+                            info_text = self._get_directory_info_text(selected_item)
+                            self.code_editor_view.set_source_content(info_text)
+                            
+                            if item_type == "directory":
+                                self.main_window_view.set_status(f"Показана директория: {selected_item.get('name', '')}")
+                            else:
+                                self.main_window_view.set_status(f"Показан проект: {selected_item.get('name', '')}")
+                        else:
+                            self.code_editor_view.set_source_content("")
+            else:
+                logger.warning("ProjectTreeView не поддерживает get_selected_element_code()")
+                
+        except Exception as e:
+            logger.error(f"Ошибка при отображении кода элемента: {e}")
+            self.main_window_view.show_error("Ошибка", f"Не удалось отобразить код элемента: {e}")
+    
+    def _get_directory_info_text(self, directory_item: dict) -> str:
+        """Возвращает информационный текст для директории."""
+        name = directory_item.get("name", "Директория")
+        path = directory_item.get("path", "")
+        
+        info_lines = [
+            f"# {name}",
+            f"# Тип: {'Проект' if directory_item.get('type') == 'project' else 'Директория'}",
+            f"# Путь: {path}",
+            f"",
+            f"# Содержимое:",
+            f"# ------------",
+            f""
+        ]
+        
+        # Если это директория проекта, можно добавить статистику
+        if directory_item.get('type') == 'project' and hasattr(self, 'project_service'):
+            try:
+                structure = self.project_service.get_project_structure()
+                if structure:
+                    files_count = len(structure.get('files', {}))
+                    dirs_count = len(structure.get('directories', []))
+                    modules_count = len(structure.get('modules', []))
+                    
+                    info_lines.extend([
+                        f"# Статистика проекта:",
+                        f"#   Файлов: {files_count}",
+                        f"#   Директорий: {dirs_count}",
+                        f"#   Модулей: {modules_count}",
+                        f""
+                    ])
+            except Exception:
+                pass
+        
+        info_lines.append("# Выберите конкретный файл или элемент кода для просмотра")
+        
+        return "\n".join(info_lines)
+    
     def on_tree_item_selected(self):
-        """Обработка выбора элемента дерева проекта."""
+        """Обработка выбора элемента дерева проекта (базовая логика)."""
         selected_item = self.project_tree_view.get_selected_item()
         if not selected_item:
             return
@@ -831,22 +941,54 @@ class MainController:
         item_path = selected_item.get("path")
         item_name = selected_item.get("clean_name", selected_item.get("name"))
         
+        # ОБНОВЛЕНИЕ: Убираем автоматическую загрузку файлов при выборе
+        # Теперь файлы загружаются только при явном действии
         if item_type == "file":
-            # Проверяем несохраненные изменения
-            if self.has_unsaved_changes and self.current_file_path:
-                response = self.dialogs_view.ask_save_changes(os.path.basename(self.current_file_path))
-                
-                if response is None:  # Отмена
-                    return
-                elif response:  # Сохранить
-                    self.on_save_current_file()
+            self.current_file_path = item_path
             
-            # Загружаем файл
-            self._load_file_content(item_path)
+            # Обновляем статус, но не загружаем файл автоматически
+            self.main_window_view.set_status(f"Выбран файл: {item_name}")
+            
+            # Если хотим сохранить возможность открывать файлы по двойному клику,
+            # можно добавить отдельный обработчик
         elif item_type == "module":
             self.main_window_view.set_status(f"Выбран модуль: {item_name}")
         elif item_type == "directory":
             self.main_window_view.set_status(f"Выбрана директория: {item_name}")
+        elif item_type == "class":
+            self.main_window_view.set_status(f"Выбран класс: {item_name}")
+        elif item_type in ["function", "async_function"]:
+            self.main_window_view.set_status(f"Выбрана функция: {item_name}")
+        elif item_type in ["method", "async_method"]:
+            self.main_window_view.set_status(f"Выбран метод: {item_name}")
+        elif item_type in ["import_section", "global_section"]:
+            self.main_window_view.set_status(f"Выбрана секция кода")
+            
+    def on_open_selected_file(self):
+        """Открыть выбранный файл (вместо показа кода элемента)."""
+        selected_item = self.project_tree_view.get_selected_item()
+        if not selected_item:
+            self.main_window_view.show_warning("Открытие", "Выберите файл для открытия")
+            return
+        
+        item_type = selected_item.get("type")
+        item_path = selected_item.get("path")
+        
+        if item_type != "file":
+            self.main_window_view.show_warning("Открытие", "Выберите файл, а не элемент кода")
+            return
+        
+        # Проверяем несохраненные изменения
+        if self.has_unsaved_changes and self.current_file_path:
+            response = self.dialogs_view.ask_save_changes(os.path.basename(self.current_file_path))
+            
+            if response is None:  # Отмена
+                return
+            elif response:  # Сохранить
+                self.on_save_current_file()
+        
+        # Загружаем файл
+        self._load_file_content(item_path)
 
     def on_expand_all(self):
         """Раскрыть все ветки дерева."""

@@ -1,0 +1,57 @@
+?? ДЕРЕВО ПРОЕКТА: aiAgent.ref
+
+?? aiAgent.ref
++-- ?? main.py
++-- ?? core/
+¦   +-- ?? app_context.py
+¦   +-- ?? factory.py
+¦   +-- ?? interfaces.py
+¦   +-- ?? __init__.py
+¦   +-- ?? business/
+¦   ¦   +-- ?? ai_schema_service.py
+¦   ¦   +-- ?? analysis_service.py
+¦   ¦   +-- ?? ast_service.py
+¦   ¦   +-- ?? change_service.py
+¦   ¦   +-- ?? code_manager.py
+¦   ¦   +-- ?? code_service.py
+¦   ¦   +-- ?? code_utils.py
+¦   ¦   +-- ?? diff_engine.py
+¦   ¦   +-- ?? error_handler.py
+¦   ¦   +-- ?? project_creator_service.py
+¦   ¦   +-- ?? project_service.py
+¦   ¦   +-- ?? project_structure_service.py
+¦   ¦   +-- ?? __init__.py
+¦   +-- ?? data/
+¦   ¦   +-- ?? ai_schema_parser.py
+¦   ¦   +-- ?? file_provider.py
+¦   ¦   +-- ?? project_repository.py
+¦   +-- ?? models/
+¦   ¦   +-- ?? code_model.py
+¦   ¦   +-- ?? project_model.py
+¦   +-- ?? parsers/
+¦   ¦   +-- ?? code_tree_parser.py
+¦   ¦   +-- ?? __init__.py
++-- ?? gui/
+¦   +-- ?? controller/
+¦   ¦   +-- ?? analysis_controller.py
+¦   ¦   +-- ?? code_controller.py
+¦   ¦   +-- ?? main_controller.py
+¦   ¦   +-- ?? project_controller.py
+¦   ¦   +-- ?? project_tree_controller.py
+¦   +-- ?? utils/
+¦   ¦   +-- ?? event_bus.py
+¦   ¦   +-- ?? gui_helpers.py
+¦   ¦   +-- ?? ui_components.py
+¦   ¦   +-- ?? ui_factory.py
+¦   +-- ?? views/
+¦   ¦   +-- ?? analysis_view.py
+¦   ¦   +-- ?? code_editor_view.py
+¦   ¦   +-- ?? code_structure_view.py
+¦   ¦   +-- ?? dialogs_view.py
+¦   ¦   +-- ?? main_window_view.py
+¦   ¦   +-- ?? project_tree_view.py
+¦   ¦   +-- ?? __init__.py
++-- ?? templates/
+    +-- ?? python_basic/
+        +-- ?? main.py
+

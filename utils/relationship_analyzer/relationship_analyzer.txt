@@ -1,14 +1,20 @@
 # Установка зависимостей
 pip install graphviz
 
-# Полный анализ с деревом и графиком
-python relationship_analyzer.py /path/to/project -t -g
-
-# Только текстовое дерево
-python relationship_analyzer.py . -t
-
-# Экспорт в JSON
-python relationship_analyzer.py . -j
-
 # Все опции вместе
 python relationship_analyzer.py . -t -g -j --format svg
+
+# Анализ всей директории (корень определяется автоматически)
+python relationship_analyzer.py /path/to/project -t
+
+# Анализ конкретного файла в контексте проекта (текстовое дерево)
+python relationship_analyzer.py /path/to/project/src/main.py -r /path/to/project -t
+
+# Явное указание корня проекта
+python relationship_analyzer.py . --project-root /home/user/project -g
+
+# Экспорт в JSON с указанным корнем
+python relationship_analyzer.py --project-root /path/to/project -j
+
+# Анализ текущей директории как проекта (с деревом и графиком)
+python relationship_analyzer.py . -t -g
