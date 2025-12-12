@@ -1,20 +1,53 @@
-# Базовое использование
-python project_tree.py /path/to/project
+Доступные флаги:
 
-# С глубиной 3 (папка.модуль.класс)
-python project_tree.py /path/to/project -d 3
+python project_tree.py -h
+python project_tree.py --help
 
-# С докстрингами
-python project_tree.py /path/to/project --docstrings
+Основные аргументы:
 
-# Экспорт в текстовый файл и JSON
-python project_tree.py /path/to/project -t -j
+    project_path - путь к проекту (по умолчанию: текущая директория)
 
-# Поиск элемента
-python project_tree.py /path/to/project -s "User"
+    -h, --help - показать справку и выйти
 
-# С исключением директорий
-python project_tree.py /path/to/project --exclude tests migrations
+    -o, --output FILE - файл для сохранения результата
 
-# Использование детализированной версии
-python detailed_tree.py /path/to/project
+    -v, --verbose - подробный вывод
+
+    --exclude DIRS - директории для исключения
+
+    --no-indent - не использовать отступы в JSON
+
+    --minify - минимизировать JSON
+
+    --version - показать версию и выйти
+
+Примеры использования:
+bash
+
+# Показать справку
+python project_tree.py -h
+python project_tree.py --help
+
+# Простой анализ текущей директории
+python project_tree.py
+
+# Анализ конкретного проекта
+python project_tree.py /path/to/your/project
+
+# Сохранить в указанный файл
+python project_tree.py /path/to/project -o my_structure.json
+
+# Подробный вывод
+python project_tree.py /path/to/project -v
+
+# Исключить дополнительные директории
+python project_tree.py /path/to/project --exclude "node_modules,dist,build"
+
+# Сохранить без форматирования
+python project_tree.py /path/to/project --no-indent
+
+# Полностью минимизировать JSON
+python project_tree.py /path/to/project --minify
+
+# Показать версию
+python project_tree.py --version

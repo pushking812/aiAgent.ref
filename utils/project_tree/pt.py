@@ -21,9 +21,7 @@ class ProjectTreeBuilder:
             root_path: Корневой путь проекта
             exclude_patterns: Паттерны для исключения
         """
-        # Нормализуем путь для обработки ".." и других относительных путей
-        self.root_path = Path(root_path).expanduser().absolute().resolve()
-        self.project_name = self.root_path.name  # Реальное название проекта из пути
+        self.root_path = Path(root_path).absolute()
         self.exclude_patterns = exclude_patterns or []
         self.exclude_patterns.extend([
             'venv', '.venv', '__pycache__', '.git', '.idea', 
@@ -32,8 +30,9 @@ class ProjectTreeBuilder:
         
         # Структура дерева
         self.tree = {
-            'name': self.project_name,
+            'name': self.root_path.name,
             'type': 'project',
+            'path': str(self.root_path),
             'children': []
         }
         
@@ -48,23 +47,18 @@ class ProjectTreeBuilder:
     
     def should_exclude(self, path: Path) -> bool:
         """Проверяет, нужно ли исключить путь."""
-        path_str = str(path)
         for pattern in self.exclude_patterns:
-            # Проверка по расширению файла
-            if pattern.startswith('*.'):
-                if path_str.endswith(pattern[1:]):
+            if pattern.startswith('*'):
+                # Проверка по расширению
+                if str(path).endswith(pattern[1:]):
                     return True
-            # Проверка по имени директории/файла
             elif pattern in path.parts:
-                return True
-            # Проверка полного пути (для относительных путей)
-            elif pattern in path_str:
                 return True
         return False
     
     def build_tree(self) -> None:
         """Строит полное дерево проекта."""
-        print(f"🔍 Построение дерева проекта: {self.root_path}")
+        print(f"?? Построение дерева проекта: {self.root_path}")
         
         # Сначала строим файловую структуру
         self._build_file_structure()
@@ -72,7 +66,7 @@ class ProjectTreeBuilder:
         # Затем анализируем содержимое файлов
         self._analyze_file_contents()
         
-        print(f"✅ Дерево построено. Статистика: {self.stats}")
+        print(f"? Дерево построено. Статистика: {self.stats}")
     
     def _build_file_structure(self) -> None:
         """Строит файловую структуру проекта."""
@@ -83,11 +77,7 @@ class ProjectTreeBuilder:
             dirs[:] = [d for d in dirs if not self.should_exclude(root_path / d)]
             
             # Получаем относительный путь от корня проекта
-            try:
-                rel_path = root_path.relative_to(self.root_path)
-            except ValueError:
-                # Если путь не является подпутем корня (не должно происходить)
-                continue
+            rel_path = root_path.relative_to(self.root_path)
             
             # Создаем путь в дереве
             current_node = self.tree
@@ -106,22 +96,21 @@ class ProjectTreeBuilder:
                         new_dir = {
                             'name': part,
                             'type': 'directory',
+                            'path': str(self.root_path / rel_path),
                             'children': []
                         }
                         current_node['children'].append(new_dir)
                         current_node = new_dir
-                        self.stats['packages'] += 1
             
             # Добавляем Python файлы
             py_files = [f for f in files if f.endswith('.py') 
                        and not self.should_exclude(root_path / f)]
             
             for py_file in py_files:
-                rel_file_path = str(rel_path / py_file) if rel_path != Path('.') else py_file
                 module_node = {
                     'name': py_file,
                     'type': 'module',
-                    'path': rel_file_path,  # Относительный путь
+                    'path': str(root_path / py_file),
                     'classes': [],
                     'functions': [],
                     'children': []
@@ -142,7 +131,7 @@ class ProjectTreeBuilder:
     
     def _analyze_module(self, module_node: Dict) -> None:
         """Анализирует один Python модуль."""
-        file_path = self.root_path / module_node['path']
+        file_path = Path(module_node['path'])
         
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -150,42 +139,23 @@ class ProjectTreeBuilder:
             
             tree = ast.parse(content)
             
-            # Сбрасываем списки на случай повторного анализа
-            module_node['classes'] = []
-            module_node['functions'] = []
-            
-            # ПЕРВЫЙ ПРОХОД: собираем только классы
+            # Собираем информацию о классе
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     class_info = self._analyze_class(node)
                     module_node['classes'].append(class_info)
                     self.stats['classes'] += 1
-            
-            # ВТОРОЙ ПРОХОД: собираем функции уровня модуля
-            # Используем более точный подход - проверяем родительский узел
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    # Находим родительский узел
-                    parent = None
-                    for parent_node in ast.walk(tree):
-                        # Проверяем все дочерние узлы родителя
-                        for child in ast.iter_child_nodes(parent_node):
-                            if child == node:
-                                parent = parent_node
-                                break
-                        if parent:
-                            break
-                    
-                    # Если родитель - корень модуля (Module), то это функция уровня модуля
-                    if isinstance(parent, ast.Module):
+                
+                elif isinstance(node, ast.FunctionDef):
+                    # Проверяем, не является ли это методом класса
+                    # (методы уже обработаны в analyze_class)
+                    if not self._is_method(node):
                         func_info = self._analyze_function(node)
                         module_node['functions'].append(func_info)
                         self.stats['functions'] += 1
                         
         except (SyntaxError, UnicodeDecodeError) as e:
-            print(f"⚠️  Ошибка при анализе {file_path}: {e}")
-        except Exception as e:
-            print(f"⚠️  Неожиданная ошибка при анализе {file_path}: {e}")
+            print(f"??  Ошибка при анализе {file_path}: {e}")
     
     def _analyze_class(self, class_node: ast.ClassDef) -> Dict:
         """Анализирует класс и его методы."""
@@ -298,10 +268,18 @@ class ProjectTreeBuilder:
             return str(annotation.value)
         return ''
     
+    def _is_method(self, func_node: ast.FunctionDef) -> bool:
+        """Проверяет, является ли функция методом класса."""
+        # Простая проверка: если у функции есть аргумент self/cls, то это метод
+        args = func_node.args.args
+        if args and args[0].arg in ('self', 'cls'):
+            return True
+        return False
+    
     def print_tree(self, max_depth: int = 10, show_docstrings: bool = False) -> None:
         """Печатает дерево в консоли."""
         print("\n" + "="*80)
-        print(f"🌳 ДЕРЕВО ПРОЕКТА: {self.project_name}")
+        print(f"?? ДЕРЕВО ПРОЕКТА: {self.root_path.name}")
         print("="*80)
         self._print_node(self.tree, 0, max_depth, show_docstrings)
         print("\n" + "="*80)
@@ -318,13 +296,13 @@ class ProjectTreeBuilder:
         
         # Определяем иконку в зависимости от типа
         icons = {
-            'project': '📁',
-            'directory': '📁',
-            'module': '📄',
-            'class': '🏗️',
-            'method': '⚙️',
-            'function': '🔧',
-            'attribute': '📊'
+            'project': '??',
+            'directory': '??',
+            'module': '??',
+            'class': '??',
+            'method': '??',
+            'function': '??',
+            'attribute': '??'
         }
         
         icon = icons.get(node['type'], '?')
@@ -334,14 +312,14 @@ class ProjectTreeBuilder:
         elif node['type'] == 'directory':
             print(f"{prefix}+-- {icon} {node['name']}/")
         elif node['type'] == 'module':
-            print(f"{prefix}+-- {icon} {node['name']} ({node.get('path', '')})")
+            print(f"{prefix}+-- {icon} {node['name']}")
             
             # Показываем классы и функции модуля
             if level + 1 <= max_depth:
                 # Классы
                 for class_info in node.get('classes', []):
                     class_indent = "¦   " * level
-                    print(f"{class_indent}+-- 🏗️ {class_info['name']}")
+                    print(f"{class_indent}+-- ?? {class_info['name']}")
                     
                     # Методы класса
                     if level + 2 <= max_depth:
@@ -353,21 +331,21 @@ class ProjectTreeBuilder:
                             async_prefix = "async " if method.get('is_async') else ""
                             args_str = f"({', '.join(method['args'])})" if method.get('args') else "()"
                             
-                            print(f"{method_indent}+-- ⚙️  {async_prefix}{method['name']}{args_str}{decorators}")
+                            print(f"{method_indent}+-- ??  {async_prefix}{method['name']}{args_str}{decorators}")
                             
                             # Докстринг метода
                             if show_docstrings and method.get('docstring'):
                                 doc_indent = "¦   " * (level + 2)
                                 doc_preview = method['docstring'][:50] + "..." \
                                             if len(method['docstring']) > 50 else method['docstring']
-                                print(f"{doc_indent}+-- 💬 \"{doc_preview}\"")
+                                print(f"{doc_indent}+-- ?? \"{doc_preview}\"")
                     
                     # Атрибуты класса
                     if level + 2 <= max_depth:
                         for attr in class_info.get('attributes', []):
                             attr_indent = "¦   " * (level + 1)
                             annotation = f": {attr['annotation']}" if attr.get('annotation') else ""
-                            print(f"{attr_indent}+-- 📊 {attr['name']}{annotation}")
+                            print(f"{attr_indent}+-- ?? {attr['name']}{annotation}")
                 
                 # Функции уровня модуля
                 for func in node.get('functions', []):
@@ -378,7 +356,7 @@ class ProjectTreeBuilder:
                     async_prefix = "async " if func.get('is_async') else ""
                     args_str = f"({', '.join(func['args'])})" if func.get('args') else "()"
                     
-                    print(f"{func_indent}+-- 🔧 {async_prefix}{func['name']}{args_str}{decorators}")
+                    print(f"{func_indent}+-- ?? {async_prefix}{func['name']}{args_str}{decorators}")
         
         # Рекурсивно обрабатываем дочерние узлы
         if node['type'] in ['project', 'directory']:
@@ -387,7 +365,7 @@ class ProjectTreeBuilder:
     
     def _print_statistics(self) -> None:
         """Печатает статистику проекта."""
-        print("📊 СТАТИСТИКА ПРОЕКТА:")
+        print("?? СТАТИСТИКА ПРОЕКТА:")
         print(f"   Пакетов/директорий: {self.stats['packages']}")
         print(f"   Модулей: {self.stats['modules']}")
         print(f"   Классов: {self.stats['classes']}")
@@ -407,7 +385,7 @@ class ProjectTreeBuilder:
             finally:
                 sys.stdout = original_stdout
         
-        print(f"💾 Дерево экспортировано в {output_file}")
+        print(f"?? Дерево экспортировано в {output_file}")
     
     def export_to_json(self, output_file: str = "project_structure.json") -> None:
         """Экспортирует структуру в JSON."""
@@ -415,87 +393,24 @@ class ProjectTreeBuilder:
         
         def serialize_node(node):
             """Сериализует узел для JSON."""
-            # Базовые поля
             result = {
                 'name': node['name'],
                 'type': node['type'],
+                'path': node.get('path', '')
             }
             
-            # Добавляем относительный путь для модулей
-            if node['type'] == 'module' and 'path' in node:
-                result['path'] = node['path']
-            
-            # Добавляем детей для директорий и проектов
-            if 'children' in node and node['children']:
-                result['children'] = [serialize_node(child) for child in node['children']]
-            
-            # ДЛЯ МОДУЛЕЙ: всегда добавляем классы и функции
             if node['type'] == 'module':
-                # Сериализуем классы
-                classes = []
-                for class_info in node.get('classes', []):
-                    class_data = {
-                        'name': class_info['name'],
-                        'type': 'class',
-                        'bases': class_info.get('bases', []),
-                        'docstring': class_info.get('docstring', '')
-                    }
-                    
-                    # Методы класса
-                    methods = []
-                    for method_info in class_info.get('methods', []):
-                        method_data = {
-                            'name': method_info['name'],
-                            'type': 'method',
-                            'args': method_info.get('args', []),
-                            'decorators': method_info.get('decorators', []),
-                            'docstring': method_info.get('docstring', ''),
-                            'is_async': method_info.get('is_async', False)
-                        }
-                        methods.append(method_data)
-                    
-                    if methods:
-                        class_data['methods'] = methods
-                    
-                    # Атрибуты класса
-                    attributes = []
-                    for attr_info in class_info.get('attributes', []):
-                        attr_data = {
-                            'name': attr_info['name'],
-                            'type': 'attribute'
-                        }
-                        if 'annotation' in attr_info:
-                            attr_data['annotation'] = attr_info['annotation']
-                        attributes.append(attr_data)
-                    
-                    if attributes:
-                        class_data['attributes'] = attributes
-                    
-                    classes.append(class_data)
-                
-                # ВСЕГДА добавляем массивы, даже если они пустые
-                result['classes'] = classes
-                
-                # Сериализуем функции
-                functions = []
-                for func_info in node.get('functions', []):
-                    func_data = {
-                        'name': func_info['name'],
-                        'type': 'function',
-                        'args': func_info.get('args', []),
-                        'decorators': func_info.get('decorators', []),
-                        'docstring': func_info.get('docstring', ''),
-                        'is_async': func_info.get('is_async', False)
-                    }
-                    functions.append(func_data)
-                
-                result['functions'] = functions
+                result['classes'] = node.get('classes', [])
+                result['functions'] = node.get('functions', [])
+            
+            if 'children' in node:
+                result['children'] = [serialize_node(child) for child in node['children']]
             
             return result
         
         structure = {
-            'project': self.project_name,
-            'root_path': str(self.root_path),  # Абсолютный нормализованный путь
+            'project': self.root_path.name,
+            'root_path': str(self.root_path),
             'stats': self.stats,
             'tree': serialize_node(self.tree)
         }
@@ -503,7 +418,7 @@ class ProjectTreeBuilder:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(structure, f, indent=2, ensure_ascii=False)
         
-        print(f"💾 Структура экспортирована в JSON: {output_file}")
+        print(f"?? Структура экспортирована в JSON: {output_file}")
     
     def find_element(self, search_term: str) -> List[Dict]:
         """Находит элемент по имени в дереве."""
@@ -594,7 +509,7 @@ def main():
     
     # Проверяем существование пути
     if not os.path.exists(args.path):
-        print(f"❌ Ошибка: путь '{args.path}' не существует")
+        print(f"? Ошибка: путь '{args.path}' не существует")
         sys.exit(1)
     
     # Создаем построитель дерева
@@ -608,19 +523,19 @@ def main():
         if args.search:
             results = builder.find_element(args.search)
             if results:
-                print(f"\n🔍 Результаты поиска '{args.search}':")
+                print(f"\n?? Результаты поиска '{args.search}':")
                 for result in results:
                     type_icons = {
-                        'directory': '📁',
-                        'module': '📄',
-                        'class': '🏗️',
-                        'method': '⚙️',
-                        'function': '🔧'
+                        'directory': '??',
+                        'module': '??',
+                        'class': '??',
+                        'method': '??',
+                        'function': '??'
                     }
                     icon = type_icons.get(result['type'], '?')
                     print(f"   {icon} {result['path']} ({result['type']})")
             else:
-                print(f"\n❌ По запросу '{args.search}' ничего не найдено")
+                print(f"\n?? По запросу '{args.search}' ничего не найдено")
         
         # Показываем дерево в консоли
         builder.print_tree(max_depth=args.depth, show_docstrings=args.docstrings)
@@ -634,9 +549,9 @@ def main():
             builder.export_to_json()
         
     except KeyboardInterrupt:
-        print("\n\n⏹️  Прервано пользователем")
+        print("\n\n??  Прервано пользователем")
     except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
+        print(f"\n? Ошибка: {e}")
         import traceback
         traceback.print_exc()
 

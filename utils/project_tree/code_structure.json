@@ -1,0 +1,504 @@
+{
+  "project_tree.ProjectTreeBuilder.__init__": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "__init__",
+    "line": 16,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "root_path",
+        "exclude_patterns"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 1,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Инициализация построителя дерева проекта.\n\nArgs:\n    root_path: Корневой путь проекта\n    exclude_patterns: Паттерны для исключения",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.should_exclude": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "should_exclude",
+    "line": 49,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "path"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Проверяет, нужно ли исключить путь.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.build_tree": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "build_tree",
+    "line": 65,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Строит полное дерево проекта.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._build_file_structure": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_build_file_structure",
+    "line": 77,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Строит файловую структуру проекта.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_file_contents": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_file_contents",
+    "line": 132,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует содержимое Python файлов.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_module": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_module",
+    "line": 143,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "module_node"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует один Python модуль.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_class": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_class",
+    "line": 190,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "class_node"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует класс и его методы.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_method": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_method",
+    "line": 220,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "method_node"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует метод класса.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_function": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_function",
+    "line": 244,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "func_node"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует функцию уровня модуля.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._analyze_attribute": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_analyze_attribute",
+    "line": 268,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "attr_node"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Анализирует атрибут класса.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._get_annotation": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_get_annotation",
+    "line": 288,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "annotation"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Получает строковое представление аннотации типа.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.print_tree": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "print_tree",
+    "line": 301,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "max_depth",
+        "show_docstrings"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 2,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Печатает дерево в консоли.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._print_node": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_print_node",
+    "line": 310,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "node",
+        "level",
+        "max_depth",
+        "show_docstrings"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Рекурсивно печатает узел дерева.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder._print_statistics": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "_print_statistics",
+    "line": 388,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Печатает статистику проекта.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.export_to_text": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "export_to_text",
+    "line": 398,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "output_file"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 1,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Экспортирует дерево в текстовый файл.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.export_to_json": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "export_to_json",
+    "line": 412,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "output_file"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 1,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Экспортирует структуру в JSON.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.ProjectTreeBuilder.find_element": {
+    "type": "method",
+    "module": "project_tree",
+    "class": "ProjectTreeBuilder",
+    "name": "find_element",
+    "line": 508,
+    "args": {
+      "posonlyargs": [],
+      "args": [
+        "self",
+        "search_term"
+      ],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Находит элемент по имени в дереве.",
+    "decorators": [],
+    "is_async": false,
+    "file": "project_tree.py"
+  },
+  "project_tree.main": {
+    "type": "function",
+    "module": "project_tree",
+    "name": "main",
+    "line": 550,
+    "args": {
+      "posonlyargs": [],
+      "args": [],
+      "vararg": null,
+      "kwonlyargs": [],
+      "kwarg": null,
+      "defaults_count": 0,
+      "kw_defaults_count": 0
+    },
+    "docstring": "Основная функция.",
+    "decorators": [],
+    "is_async": false,
+    "returns": null,
+    "file": "project_tree.py"
+  },
+  "_imports": {
+    "project_tree": [
+      {
+        "name": "os",
+        "alias": null,
+        "line": 7
+      },
+      {
+        "name": "ast",
+        "alias": null,
+        "line": 8
+      },
+      {
+        "name": "sys",
+        "alias": null,
+        "line": 9
+      },
+      {
+        "module": "pathlib",
+        "name": "Path",
+        "alias": null,
+        "line": 10,
+        "level": 0
+      },
+      {
+        "module": "collections",
+        "name": "defaultdict",
+        "alias": null,
+        "line": 11,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "Dict",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "List",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "Set",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "Tuple",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "Optional",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "module": "typing",
+        "name": "Any",
+        "alias": null,
+        "line": 12,
+        "level": 0
+      },
+      {
+        "name": "argparse",
+        "alias": null,
+        "line": 13
+      },
+      {
+        "name": "json",
+        "alias": null,
+        "line": 414
+      },
+      {
+        "name": "traceback",
+        "alias": null,
+        "line": 640
+      }
+    ]
+  }
+}
