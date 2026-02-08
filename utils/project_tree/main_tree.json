@@ -1,0 +1,729 @@
+{
+  "name": "main.py",
+  "type": "project",
+  "path": "..\\..",
+  "children": {
+    "modules": {
+      "type": "modules_section",
+      "children": {
+        "main.py": {
+          "name": "main",
+          "type": "module",
+          "path": "..\\..\\main.py",
+          "docstring": "Главный модуль AI Code Assistant.\nИспользует обновленную архитектуру с AppContext.",
+          "children": {
+            "imports": {
+              "type": "imports_section",
+              "children": {
+                "import_0": {
+                  "name": "tkinter",
+                  "type": "import",
+                  "alias": "tk",
+                  "line": 7,
+                  "children": {}
+                },
+                "import_1": {
+                  "name": "logging",
+                  "type": "import",
+                  "alias": null,
+                  "line": 8,
+                  "children": {}
+                },
+                "from_import_2": {
+                  "name": "ttk",
+                  "type": "from_import",
+                  "module": "tkinter",
+                  "alias": null,
+                  "line": 9,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_3": {
+                  "name": "get_app_context",
+                  "type": "from_import",
+                  "module": "core.app_context",
+                  "alias": null,
+                  "line": 11,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_4": {
+                  "name": "MainWindowView",
+                  "type": "from_import",
+                  "module": "gui.views.main_window_view",
+                  "alias": null,
+                  "line": 12,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_5": {
+                  "name": "CodeEditorView",
+                  "type": "from_import",
+                  "module": "gui.views.code_editor_view",
+                  "alias": null,
+                  "line": 13,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_6": {
+                  "name": "ProjectTreeView",
+                  "type": "from_import",
+                  "module": "gui.views.project_tree_view",
+                  "alias": null,
+                  "line": 14,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_7": {
+                  "name": "DialogsView",
+                  "type": "from_import",
+                  "module": "gui.views.dialogs_view",
+                  "alias": null,
+                  "line": 15,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_8": {
+                  "name": "AnalysisView",
+                  "type": "from_import",
+                  "module": "gui.views.analysis_view",
+                  "alias": null,
+                  "line": 16,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_9": {
+                  "name": "MainController",
+                  "type": "from_import",
+                  "module": "gui.controller.main_controller",
+                  "alias": null,
+                  "line": 17,
+                  "level": 0,
+                  "children": {}
+                },
+                "from_import_10": {
+                  "name": "ui_factory",
+                  "type": "from_import",
+                  "module": "gui.utils.ui_factory",
+                  "alias": null,
+                  "line": 18,
+                  "level": 0,
+                  "children": {}
+                }
+              }
+            },
+            "module_variables": {
+              "type": "module_variables_section",
+              "children": {
+                "var_0": {
+                  "name": "logger",
+                  "type": "variable",
+                  "line": 25,
+                  "value_preview": "Call(...)",
+                  "children": {}
+                }
+              }
+            },
+            "global_code": {
+              "type": "global_code_section",
+              "children": {
+                "global_code_0": {
+                  "name": "expr_0",
+                  "type": "expression",
+                  "line": 2,
+                  "value": "\nГлавный модуль AI Code Assistant.\nИспользует обновленную архитектуру с AppContext.\n",
+                  "children": {}
+                },
+                "global_code_1": {
+                  "name": "code_1",
+                  "type": "code_block",
+                  "line": 21,
+                  "node_type": "Expr",
+                  "children": {}
+                },
+                "global_code_2": {
+                  "name": "code_2",
+                  "type": "code_block",
+                  "line": 119,
+                  "node_type": "If",
+                  "children": {}
+                }
+              }
+            },
+            "functions": {
+              "type": "functions_section",
+              "children": {
+                "main": {
+                  "name": "main",
+                  "type": "module_function",
+                  "line": 108,
+                  "docstring": "Точка входа в приложение.",
+                  "decorators": [],
+                  "args": {
+                    "arg_names": [],
+                    "defaults_count": 0,
+                    "has_varargs": false,
+                    "has_kwargs": false,
+                    "kwonly_args": []
+                  },
+                  "returns": null,
+                  "children": {
+                    "parameters": {
+                      "type": "parameters_section",
+                      "children": {}
+                    },
+                    "local_variables": {
+                      "type": "local_variables_section",
+                      "children": {}
+                    },
+                    "body_statements": {
+                      "type": "body_statements_section",
+                      "children": {
+                        "statement_0": {
+                          "name": "stmt_0",
+                          "type": "statement",
+                          "line": 109,
+                          "children": {}
+                        },
+                        "statement_1": {
+                          "name": "stmt_1",
+                          "type": "statement",
+                          "line": 110,
+                          "children": {}
+                        }
+                      }
+                    },
+                    "nested_functions": {
+                      "type": "nested_functions_section",
+                      "children": {}
+                    },
+                    "nested_classes": {
+                      "type": "nested_classes_section",
+                      "children": {}
+                    }
+                  }
+                }
+              }
+            },
+            "classes": {
+              "type": "classes_section",
+              "children": {
+                "AIApp": {
+                  "name": "AIApp",
+                  "type": "class",
+                  "line": 28,
+                  "docstring": "Главное приложение AI Code Assistant с обновленной архитектурой.",
+                  "bases": [],
+                  "decorators": [],
+                  "metaclass": null,
+                  "children": {
+                    "class_variables": {
+                      "type": "class_variables_section",
+                      "children": {}
+                    },
+                    "class_methods": {
+                      "type": "class_methods_section",
+                      "children": {}
+                    },
+                    "instance_methods": {
+                      "type": "instance_methods_section",
+                      "children": {
+                        "__init__": {
+                          "name": "__init__",
+                          "type": "instance_method",
+                          "line": 31,
+                          "docstring": null,
+                          "decorators": [],
+                          "args": {
+                            "arg_names": [
+                              "self"
+                            ],
+                            "defaults_count": 0,
+                            "has_varargs": false,
+                            "has_kwargs": false,
+                            "kwonly_args": []
+                          },
+                          "returns": null,
+                          "children": {
+                            "parameters": {
+                              "type": "parameters_section",
+                              "children": {
+                                "param_0": {
+                                  "name": "self",
+                                  "type": "parameter",
+                                  "position": 0,
+                                  "annotation": null,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "local_variables": {
+                              "type": "local_variables_section",
+                              "children": {}
+                            },
+                            "body_statements": {
+                              "type": "body_statements_section",
+                              "children": {
+                                "statement_0": {
+                                  "name": "stmt_0",
+                                  "type": "assignment",
+                                  "line": 32,
+                                  "children": {}
+                                },
+                                "statement_1": {
+                                  "name": "stmt_1",
+                                  "type": "statement",
+                                  "line": 33,
+                                  "children": {}
+                                },
+                                "statement_2": {
+                                  "name": "stmt_2",
+                                  "type": "statement",
+                                  "line": 34,
+                                  "children": {}
+                                },
+                                "statement_3": {
+                                  "name": "stmt_3",
+                                  "type": "if_statement",
+                                  "line": 37,
+                                  "children": {}
+                                },
+                                "statement_4": {
+                                  "name": "stmt_4",
+                                  "type": "assignment",
+                                  "line": 42,
+                                  "children": {}
+                                },
+                                "statement_5": {
+                                  "name": "stmt_5",
+                                  "type": "statement",
+                                  "line": 43,
+                                  "children": {}
+                                },
+                                "statement_6": {
+                                  "name": "stmt_6",
+                                  "type": "statement",
+                                  "line": 44,
+                                  "children": {}
+                                },
+                                "statement_7": {
+                                  "name": "stmt_7",
+                                  "type": "statement",
+                                  "line": 46,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "nested_functions": {
+                              "type": "nested_functions_section",
+                              "children": {}
+                            },
+                            "nested_classes": {
+                              "type": "nested_classes_section",
+                              "children": {}
+                            }
+                          }
+                        },
+                        "_setup_ui": {
+                          "name": "_setup_ui",
+                          "type": "instance_method",
+                          "line": 48,
+                          "docstring": "Настраивает пользовательский интерфейс.",
+                          "decorators": [],
+                          "args": {
+                            "arg_names": [
+                              "self"
+                            ],
+                            "defaults_count": 0,
+                            "has_varargs": false,
+                            "has_kwargs": false,
+                            "kwonly_args": []
+                          },
+                          "returns": null,
+                          "children": {
+                            "parameters": {
+                              "type": "parameters_section",
+                              "children": {
+                                "param_0": {
+                                  "name": "self",
+                                  "type": "parameter",
+                                  "position": 0,
+                                  "annotation": null,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "local_variables": {
+                              "type": "local_variables_section",
+                              "children": {}
+                            },
+                            "body_statements": {
+                              "type": "body_statements_section",
+                              "children": {
+                                "statement_0": {
+                                  "name": "stmt_0",
+                                  "type": "statement",
+                                  "line": 49,
+                                  "children": {}
+                                },
+                                "statement_1": {
+                                  "name": "stmt_1",
+                                  "type": "statement",
+                                  "line": 51,
+                                  "children": {}
+                                },
+                                "statement_2": {
+                                  "name": "stmt_2",
+                                  "type": "assignment",
+                                  "line": 54,
+                                  "children": {}
+                                },
+                                "statement_3": {
+                                  "name": "stmt_3",
+                                  "type": "assignment",
+                                  "line": 57,
+                                  "children": {}
+                                },
+                                "statement_4": {
+                                  "name": "stmt_4",
+                                  "type": "assignment",
+                                  "line": 58,
+                                  "children": {}
+                                },
+                                "statement_5": {
+                                  "name": "stmt_5",
+                                  "type": "assignment",
+                                  "line": 59,
+                                  "children": {}
+                                },
+                                "statement_6": {
+                                  "name": "stmt_6",
+                                  "type": "assignment",
+                                  "line": 60,
+                                  "children": {}
+                                },
+                                "statement_7": {
+                                  "name": "stmt_7",
+                                  "type": "statement",
+                                  "line": 62,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "nested_functions": {
+                              "type": "nested_functions_section",
+                              "children": {}
+                            },
+                            "nested_classes": {
+                              "type": "nested_classes_section",
+                              "children": {}
+                            }
+                          }
+                        },
+                        "_setup_controllers": {
+                          "name": "_setup_controllers",
+                          "type": "instance_method",
+                          "line": 64,
+                          "docstring": "Настраивает контроллеры с сервисами из контекста.",
+                          "decorators": [],
+                          "args": {
+                            "arg_names": [
+                              "self"
+                            ],
+                            "defaults_count": 0,
+                            "has_varargs": false,
+                            "has_kwargs": false,
+                            "kwonly_args": []
+                          },
+                          "returns": null,
+                          "children": {
+                            "parameters": {
+                              "type": "parameters_section",
+                              "children": {
+                                "param_0": {
+                                  "name": "self",
+                                  "type": "parameter",
+                                  "position": 0,
+                                  "annotation": null,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "local_variables": {
+                              "type": "local_variables_section",
+                              "children": {
+                                "local_var_0": {
+                                  "name": "project_service",
+                                  "type": "variable",
+                                  "line": 67,
+                                  "value_preview": "Call(...)",
+                                  "children": {}
+                                },
+                                "local_var_1": {
+                                  "name": "code_service",
+                                  "type": "variable",
+                                  "line": 68,
+                                  "value_preview": "Call(...)",
+                                  "children": {}
+                                },
+                                "local_var_2": {
+                                  "name": "analysis_service",
+                                  "type": "variable",
+                                  "line": 69,
+                                  "value_preview": "Call(...)",
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "body_statements": {
+                              "type": "body_statements_section",
+                              "children": {
+                                "statement_0": {
+                                  "name": "stmt_0",
+                                  "type": "statement",
+                                  "line": 65,
+                                  "children": {}
+                                },
+                                "statement_1": {
+                                  "name": "stmt_1",
+                                  "type": "assignment",
+                                  "line": 67,
+                                  "children": {}
+                                },
+                                "statement_2": {
+                                  "name": "stmt_2",
+                                  "type": "assignment",
+                                  "line": 68,
+                                  "children": {}
+                                },
+                                "statement_3": {
+                                  "name": "stmt_3",
+                                  "type": "assignment",
+                                  "line": 69,
+                                  "children": {}
+                                },
+                                "statement_4": {
+                                  "name": "stmt_4",
+                                  "type": "assignment",
+                                  "line": 72,
+                                  "children": {}
+                                },
+                                "statement_5": {
+                                  "name": "stmt_5",
+                                  "type": "statement",
+                                  "line": 83,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "nested_functions": {
+                              "type": "nested_functions_section",
+                              "children": {}
+                            },
+                            "nested_classes": {
+                              "type": "nested_classes_section",
+                              "children": {}
+                            }
+                          }
+                        },
+                        "run": {
+                          "name": "run",
+                          "type": "instance_method",
+                          "line": 85,
+                          "docstring": "Запускает главный цикл приложения.",
+                          "decorators": [],
+                          "args": {
+                            "arg_names": [
+                              "self"
+                            ],
+                            "defaults_count": 0,
+                            "has_varargs": false,
+                            "has_kwargs": false,
+                            "kwonly_args": []
+                          },
+                          "returns": null,
+                          "children": {
+                            "parameters": {
+                              "type": "parameters_section",
+                              "children": {
+                                "param_0": {
+                                  "name": "self",
+                                  "type": "parameter",
+                                  "position": 0,
+                                  "annotation": null,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "local_variables": {
+                              "type": "local_variables_section",
+                              "children": {}
+                            },
+                            "body_statements": {
+                              "type": "body_statements_section",
+                              "children": {
+                                "statement_0": {
+                                  "name": "stmt_0",
+                                  "type": "statement",
+                                  "line": 86,
+                                  "children": {}
+                                },
+                                "statement_1": {
+                                  "name": "stmt_1",
+                                  "type": "statement",
+                                  "line": 87,
+                                  "children": {}
+                                },
+                                "statement_2": {
+                                  "name": "stmt_2",
+                                  "type": "statement",
+                                  "line": 90,
+                                  "children": {}
+                                },
+                                "statement_3": {
+                                  "name": "stmt_3",
+                                  "type": "statement",
+                                  "line": 93,
+                                  "children": {}
+                                },
+                                "statement_4": {
+                                  "name": "stmt_4",
+                                  "type": "statement",
+                                  "line": 95,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "nested_functions": {
+                              "type": "nested_functions_section",
+                              "children": {}
+                            },
+                            "nested_classes": {
+                              "type": "nested_classes_section",
+                              "children": {}
+                            }
+                          }
+                        },
+                        "show_context_info": {
+                          "name": "show_context_info",
+                          "type": "instance_method",
+                          "line": 97,
+                          "docstring": "Показывает информацию о контексте приложения (для отладки).",
+                          "decorators": [],
+                          "args": {
+                            "arg_names": [
+                              "self"
+                            ],
+                            "defaults_count": 0,
+                            "has_varargs": false,
+                            "has_kwargs": false,
+                            "kwonly_args": []
+                          },
+                          "returns": null,
+                          "children": {
+                            "parameters": {
+                              "type": "parameters_section",
+                              "children": {
+                                "param_0": {
+                                  "name": "self",
+                                  "type": "parameter",
+                                  "position": 0,
+                                  "annotation": null,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "local_variables": {
+                              "type": "local_variables_section",
+                              "children": {
+                                "local_var_0": {
+                                  "name": "services",
+                                  "type": "variable",
+                                  "line": 99,
+                                  "value_preview": "Call(...)",
+                                  "children": {}
+                                },
+                                "local_var_1": {
+                                  "name": "info",
+                                  "type": "variable",
+                                  "line": 100,
+                                  "value_preview": "=== Контекст приложения ===\n",
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "body_statements": {
+                              "type": "body_statements_section",
+                              "children": {
+                                "statement_0": {
+                                  "name": "stmt_0",
+                                  "type": "statement",
+                                  "line": 98,
+                                  "children": {}
+                                },
+                                "statement_1": {
+                                  "name": "stmt_1",
+                                  "type": "assignment",
+                                  "line": 99,
+                                  "children": {}
+                                },
+                                "statement_2": {
+                                  "name": "stmt_2",
+                                  "type": "assignment",
+                                  "line": 100,
+                                  "children": {}
+                                },
+                                "statement_3": {
+                                  "name": "stmt_3",
+                                  "type": "for_loop",
+                                  "line": 101,
+                                  "children": {}
+                                },
+                                "statement_4": {
+                                  "name": "stmt_4",
+                                  "type": "statement",
+                                  "line": 104,
+                                  "children": {}
+                                },
+                                "statement_5": {
+                                  "name": "stmt_5",
+                                  "type": "return",
+                                  "line": 105,
+                                  "children": {}
+                                }
+                              }
+                            },
+                            "nested_functions": {
+                              "type": "nested_functions_section",
+                              "children": {}
+                            },
+                            "nested_classes": {
+                              "type": "nested_classes_section",
+                              "children": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "static_methods": {
+                      "type": "static_methods_section",
+                      "children": {}
+                    },
+                    "properties": {
+                      "type": "properties_section",
+                      "children": {}
+                    },
+                    "nested_classes": {
+                      "type": "nested_classes_section",
+                      "children": {}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
